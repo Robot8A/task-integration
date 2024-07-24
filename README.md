@@ -4,6 +4,9 @@
 ## Description
 ...
 
+## License
+[GPL-3.0 license](LICENSE)
+
 ## Acknowledgements
 <img align="left" src="eu_flag.svg" alt="EU Flag" width="150px">
 This project has received funding from the European Union’s Horizon 2020 research and innovation programme under the Marie Skłodowska-Curie grant agreement No 955569.
