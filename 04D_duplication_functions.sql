@@ -1,0 +1,36 @@
+DROP FUNCTION IF EXISTS get_duplicated_buildings;
+CREATE FUNCTION get_duplicated_buildings(
+    project_id INT,
+    threshold FLOAT DEFAULT 0.2
+)
+RETURNS TABLE(building_a_id INT, building_b_id INT, intersection_geom GEOMETRY) AS $$
+BEGIN
+    RETURN QUERY
+    WITH grids AS (
+        SELECT geom
+        FROM hotosm_grids hg
+        WHERE hg.project_id = get_duplicated_buildings.project_id
+    ),
+    buildings AS (
+        SELECT b.osm_id, b.geom
+        FROM osm_buildings b
+        JOIN grids g ON b.geom && g.geom  -- Use bounding box intersection, to reduce complexity
+        WHERE ST_Intersects(b.geom, g.geom)
+    ),
+    filtered_buildings AS (
+        SELECT a.osm_id AS building_a_id, a.geom AS building_a_geom, b.osm_id AS building_b_id, b.geom AS building_b_geom, ST_Intersection(a.geom, b.geom) AS intersection_geom
+        FROM buildings a
+        JOIN buildings b ON a.geom && b.geom  -- Use bounding box intersection, to reduce complexity
+        WHERE a.osm_id < b.osm_id
+        AND ST_Intersects(a.geom, b.geom)
+    )
+    SELECT fb.building_a_id, fb.building_b_id, fb.intersection_geom
+    FROM filtered_buildings fb
+    WHERE ST_GeometryType(fb.intersection_geom) = 'ST_Polygon'
+    AND (
+        (ST_Area(fb.intersection_geom) / ST_Area(fb.building_a_geom)) >= threshold
+        OR
+        (ST_Area(fb.intersection_geom) / ST_Area(fb.building_b_geom)) >= threshold
+    );
+END;
+$$ LANGUAGE plpgsql;

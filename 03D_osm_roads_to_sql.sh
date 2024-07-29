@@ -9,7 +9,9 @@ echo "********************************"
 PROJECT_FILE="project_ids.txt"
 project_ids=$(cat "$PROJECT_FILE")
 num_project_ids=$(echo "$project_ids" | wc -w)
+table_name="osm_roads"
 current_project=1
+project_id_column_created=false
 
 export PGPASSWORD=postgres
 
@@ -27,17 +29,27 @@ for project_id in $project_ids; do
             exit 1
         fi
 
+        if [ $project_id_column_created = true ]; then
+            psql -h localhost -p 5432 -d hotosm -U postgres -c "ALTER TABLE ${table_name} ALTER COLUMN project_id SET DEFAULT ${project_id};"
+        fi
+        
+
         echo "Transforming roads of project ${project_id}"
 
         # Unzip file
         unzip -o data/osm_roads_${project_id}.zip -d $temp_dir
 
         # Transform GeoJSON to SQL
-        ogr2ogr -f "PostgreSQL" PG:"host=localhost port=5432 dbname=hotosm user=postgres password=postgres" $temp_dir/hotosm_project_${project_id}_roads_lines_geojson.geojson -nln osm_roads -nlt PROMOTE_TO_MULTI -lco GEOMETRY_NAME=geom -lco FID=gid -append -update
+        ogr2ogr -f "PostgreSQL" PG:"host=localhost port=5432 dbname=hotosm user=postgres password=postgres" $temp_dir/hotosm_project_${project_id}_roads_lines_geojson.geojson -nln ${table_name} -nlt PROMOTE_TO_MULTI -lco GEOMETRY_NAME=geom -lco FID=gid -append -update
     
         if [ $? -ne 0 ]; then
             echo "Failed to transform roads of project ${project_id}"
             exit 1
+        fi
+
+        if [ $project_id_column_created = false ]; then
+            psql -h localhost -p 5432 -d hotosm -U postgres -c "ALTER TABLE ${table_name} ADD COLUMN project_id INTEGER DEFAULT ${project_id};"
+            project_id_column_created=true
         fi
 
         # Remove temporary directory
@@ -57,6 +69,3 @@ for project_id in $project_ids; do
 
     current_project=$((current_project + 1))
 done
-
-# Remove duplicate roads
-psql -h localhost -p 5432 -d hotosm -U postgres -c "DELETE FROM osm_roads a USING osm_roads b WHERE a.gid < b.gid AND a.osm_id = b.osm_id;"
