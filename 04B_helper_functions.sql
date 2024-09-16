@@ -55,16 +55,24 @@ END $$ LANGUAGE plpgsql;
 -- Generates mockup grid with project_id
 DROP FUNCTION IF EXISTS generate_mockup_grid;
 CREATE FUNCTION generate_mockup_grid(project_id INT)
-RETURNS VOID AS $$
 RETURNS TABLE (id INT, geom geometry(POLYGON, 4326)) AS $$
 BEGIN
-RETURN QUERY
-		SELECT 0 AS gid, 0 AS taskid, geng.geom
-		FROM generate_grid(
-			(SELECT ST_Union(gg.geom) FROM get_grids(project_id, FALSE) AS gg),
-			0.01,
-			0.01
-		) AS geng;
+	RETURN QUERY
+	SELECT 0 AS id, geng.geom
+	FROM generate_grid(
+		(
+			SELECT ST_Union(vg.geom) FROM (
+				SELECT 
+					CASE 
+						WHEN ST_IsValid(gg.geom) THEN gg.geom 
+						ELSE ST_MakeValid(gg.geom) 
+					END AS geom
+				FROM get_grids(project_id, FALSE) AS gg
+			) AS vg
+		),
+		0.01,
+		0.01
+	) AS geng;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -170,7 +178,7 @@ BEGIN
 	-- Calculate the UTM EPSG code
 	SELECT calculate_utm_zone(union_gg.geom)::INTEGER INTO utm_epsg
 	FROM (
-    	SELECT ST_Union(gg.geom) AS geom
+    	SELECT ST_Union(CASE WHEN ST_IsValid(gg.geom) THEN gg.geom ELSE ST_MakeValid(gg.geom) END) AS geom
     	FROM get_grids(project_id) AS gg
 	) AS union_gg
 	LIMIT 1;
@@ -182,19 +190,39 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Shrinks a geometry by a given distance
+-- Shrinks a geometry by a given distance or percentage
 DROP FUNCTION IF EXISTS shrink_geometry;
-CREATE FUNCTION shrink_geometry(geom geometry, shrink_distance double precision)
+CREATE FUNCTION shrink_geometry(
+    geom geometry, 
+    shrink_distance double precision, 
+    is_percentage boolean DEFAULT FALSE
+)
 RETURNS geometry AS $$
+DECLARE
+    scaled_geom geometry;
 BEGIN
-	-- Apply the negative buffer to shrink the geometry
-	RETURN ST_Buffer(geom, -shrink_distance);
+    IF is_percentage THEN
+        -- Calculate the scaling factor for percentage-based shrinking
+        scaled_geom := ST_Translate(
+            ST_Scale(
+                ST_Translate(geom, -ST_X(ST_Centroid(geom)), -ST_Y(ST_Centroid(geom))),
+                1 - shrink_distance, 1 - shrink_distance
+            ),
+            ST_X(ST_Centroid(geom)),
+            ST_Y(ST_Centroid(geom))
+        );
+    ELSE
+        -- Apply the negative buffer to shrink the geometry
+        scaled_geom := ST_Buffer(geom, -shrink_distance);
+    END IF;
+
+    RETURN scaled_geom;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Returns shrunk grids in UTM projection
 DROP FUNCTION IF EXISTS get_shrunk_grids_in_utm;
-CREATE FUNCTION get_shrunk_grids_in_utm(project_id INT, shrink_distance DOUBLE PRECISION, do_mockup_grid BOOLEAN DEFAULT FALSE)
+CREATE FUNCTION get_shrunk_grids_in_utm(project_id INT, shrink_distance DOUBLE PRECISION, do_mockup_grid BOOLEAN DEFAULT FALSE, is_percentage boolean DEFAULT FALSE)
 RETURNS TABLE(gid INTEGER, taskid INTEGER, geom GEOMETRY) AS $$
 BEGIN
 	RETURN QUERY
@@ -202,7 +230,7 @@ BEGIN
     	SELECT ggiu.gid, ggiu.taskid, ggiu.geom
     	FROM get_grids_in_utm(project_id, do_mockup_grid) AS ggiu
 	)
-	SELECT utm_grids.gid, utm_grids.taskid, shrink_geometry(utm_grids.geom, shrink_distance) AS geom
+	SELECT utm_grids.gid, utm_grids.taskid, shrink_geometry(utm_grids.geom, shrink_distance, is_percentage) AS geom
 	FROM utm_grids;
 END;
 $$ LANGUAGE plpgsql;
@@ -232,6 +260,31 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Get buildings part of one or more tasks
+DROP FUNCTION IF EXISTS get_buildings_from_tasks;
+CREATE FUNCTION get_buildings_from_tasks(project_id INT, task_ids INT[])
+RETURNS TABLE(osm_id INTEGER, geom GEOMETRY) AS $$
+DECLARE
+    utm_epsg INTEGER;
+BEGIN
+    -- Determine the SRID of the original grids in UTM
+    SELECT ST_SRID((SELECT ggiu.geom
+                    FROM get_grids_in_utm(get_buildings_from_tasks.project_id) ggiu
+                    LIMIT 1))
+    INTO utm_epsg;
+
+    RETURN QUERY
+    SELECT b.osm_id, ST_Transform(b.geom, utm_epsg)
+    FROM osm_buildings b
+    WHERE b.project_id = get_buildings_from_tasks.project_id
+    AND ST_Intersects(b.geom,(
+        SELECT ST_Union(hg.geom) AS geom
+        FROM get_grids(get_buildings_from_tasks.project_id) hg
+        WHERE hg.taskid = ANY(task_ids)
+    ));
+END;
+$$ LANGUAGE plpgsql;
+
 -- Returns task ids of the adjacent tasks
 DROP FUNCTION IF EXISTS get_adjacent_tasks;
 CREATE FUNCTION get_adjacent_tasks(project_id INT, task_id INT)
@@ -249,3 +302,102 @@ BEGIN
 	);
 END;
 $$ LANGUAGE plpgsql;
+
+-- Divides a grid cell into subpolygons with a target area, with n being the number of points created for the random polygons and m being the target area percentage
+CREATE OR REPLACE FUNCTION divide_polygon(input_geom GEOMETRY, n INTEGER, m NUMERIC)
+RETURNS TABLE(geom GEOMETRY) AS $$
+DECLARE
+    total_area NUMERIC;
+    target_total_area NUMERIC;
+    accumulated_area NUMERIC := 0;
+    remaining_area NUMERIC;
+    selected_geom GEOMETRY;
+    voronoi_geoms GEOMETRY[];
+    voronoi_ids INTEGER[];
+    i INTEGER;
+    j INTEGER;
+    temp_geom GEOMETRY;
+    temp_id INTEGER;
+BEGIN
+    -- Step 1: Calculate the total area of the input polygon
+    total_area := ST_Area(input_geom);
+
+	IF total_area = 0 OR NOT ST_IsValid(input_geom) THEN
+		RAISE NOTICE 'Input geometry is invalid or has zero area';
+		RETURN;
+	END IF;
+
+    -- Step 2: Determine the target total area for all subpolygons combined
+    target_total_area := (m / 100.0) * total_area;
+
+    -- Step 3: Generate Voronoi polygons from random points within the polygon
+    SELECT array_agg(clipped_voronoi.geom) INTO voronoi_geoms
+    FROM (
+        SELECT ST_Intersection(v.geom, input_geom) AS geom
+        FROM (
+            SELECT (ST_Dump(ST_VoronoiPolygons(ST_Collect(random_points.geom)))).geom AS geom
+            FROM (SELECT ST_GeneratePoints(input_geom, n) AS geom) AS random_points
+        ) AS v
+    ) AS clipped_voronoi;
+
+    -- Initialize an array of indices for shuffling
+    SELECT array(SELECT generate_series(1, array_length(voronoi_geoms, 1))) INTO voronoi_ids;
+
+    -- Shuffle the indices
+    FOR i IN array_lower(voronoi_ids, 1) .. array_upper(voronoi_ids, 1) LOOP
+        j := floor(random() * (array_length(voronoi_ids, 1) - i + 1) + i)::integer;
+        temp_id := voronoi_ids[i];
+        voronoi_ids[i] := voronoi_ids[j];
+        voronoi_ids[j] := temp_id;
+    END LOOP;
+
+    -- Step 4: Iterate through shuffled Voronoi polygons
+    i := 1;
+    WHILE i <= array_length(voronoi_ids, 1) AND accumulated_area < target_total_area LOOP
+        selected_geom := voronoi_geoms[voronoi_ids[i]];
+        accumulated_area := accumulated_area + ST_Area(selected_geom);
+
+        -- If the accumulated area exceeds the target, clip the last polygon to fit the exact area
+        IF accumulated_area > target_total_area THEN
+            selected_geom := ST_Intersection(
+                selected_geom,
+                ST_MakeEnvelope(
+                    ST_XMin(selected_geom), ST_YMin(selected_geom),
+                    ST_XMin(selected_geom) + sqrt(target_total_area / ST_Area(selected_geom)) * (ST_XMax(selected_geom) - ST_XMin(selected_geom)),
+                    ST_YMin(selected_geom) + sqrt(target_total_area / ST_Area(selected_geom)) * (ST_YMax(selected_geom) - ST_YMin(selected_geom)),
+                    ST_SRID(selected_geom)
+                )
+            );
+            accumulated_area := target_total_area;
+        END IF;
+
+        -- Return the selected geometry as a subpolygon
+        geom := selected_geom;
+        RETURN NEXT;
+
+        -- Increment index
+        i := i + 1;
+    END LOOP;
+
+END $$ LANGUAGE plpgsql;
+
+-- Generates mockup polygon grid with project_id
+CREATE OR REPLACE FUNCTION generate_mockup_polygon_grid(project_id INT, percentage_covered NUMERIC)
+RETURNS TABLE (id INT, geom GEOMETRY) AS $$
+BEGIN
+    -- Return a combined result set from divide_polygon for all grids
+    RETURN QUERY
+    SELECT
+        0 AS id,
+        subpolygon_lateral.geom AS geom
+    FROM get_grids_in_utm(project_id, FALSE) AS grid,
+    LATERAL (
+        SELECT subpolygon.geom
+        FROM divide_polygon(
+            input_geom => grid.geom,
+            n => 100,
+            m => percentage_covered
+        ) AS subpolygon
+    ) AS subpolygon_lateral;
+END $$ LANGUAGE plpgsql;
+

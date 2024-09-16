@@ -65,7 +65,8 @@ DROP FUNCTION IF EXISTS continuation_per_project;
 CREATE FUNCTION continuation_per_project(
 	project_id INT,
 	shrink_distances DOUBLE PRECISION[],
-	do_mockup_grid BOOLEAN DEFAULT FALSE
+	do_mockup_grid BOOLEAN DEFAULT FALSE,
+	is_percentage BOOLEAN DEFAULT FALSE
 )
 RETURNS TABLE(
 	shrink_distance DOUBLE PRECISION,
@@ -84,6 +85,8 @@ DECLARE
 	area_of_border_buffer DOUBLE PRECISION;
 	nodes_per_area_shrunk_grids DOUBLE PRECISION;
 	nodes_per_area_border_buffer DOUBLE PRECISION;
+	total_number_of_nonconnecting_nodes BIGINT;
+	total_area_of_grids DOUBLE PRECISION;
 	utm_epsg INTEGER;
 	num_distances INT;
 BEGIN
@@ -96,6 +99,14 @@ BEGIN
                 	LIMIT 1))
 	INTO utm_epsg;
 
+	-- Save total number of nonconnecting nodes
+	SELECT count(*) INTO total_number_of_nonconnecting_nodes
+	FROM get_nonconnecting_start_end_nodes(project_id);
+
+	-- Save total area of grids
+	SELECT COALESCE(SUM(ST_Area(ggiu.geom)), 0) INTO total_area_of_grids
+    	FROM get_grids_in_utm(project_id, do_mockup_grid) AS ggiu;
+
 	-- Determine the number of shrink distances
 	SELECT array_length(shrink_distances, 1)
 	INTO num_distances;
@@ -105,7 +116,7 @@ BEGIN
     	-- Get the current shrink distance
     	distance := shrink_distances[i];
 
-		RAISE NOTICE ' - Buffer distance: %', distance;
+		RAISE NOTICE ' - Buffer distance: %, is percentage?: %', distance, is_percentage;
 
 		-- Set all other variables to NULL, in case of an error
 		nodes_in_shrunk_grids := NULL;
@@ -118,7 +129,7 @@ BEGIN
     	-- Calculate number of nodes within the shrunk grids
     	WITH shrunk_grids AS (
         	SELECT gsgiu.gid, gsgiu.geom
-        	FROM get_shrunk_grids_in_utm(project_id, distance, do_mockup_grid) AS gsgiu
+        	FROM get_shrunk_grids_in_utm(project_id, distance, do_mockup_grid, is_percentage) AS gsgiu
     	),
     	nonconnecting_nodes AS (
         	SELECT ST_Transform(gncsen.node, utm_epsg) AS node
@@ -129,55 +140,19 @@ BEGIN
     	JOIN shrunk_grids AS sg
         	ON ST_Within(nn.node, sg.geom);
 
-   	 	WITH shrunk_grids AS (
+		-- Calculate number of nodes within buffer
+		nodes_in_border_buffer := total_number_of_nonconnecting_nodes - nodes_in_shrunk_grids;
+
+   	 	-- Calculate total area of the shrunk grids
+		WITH shrunk_grids AS (
         	SELECT gsgiu.gid, gsgiu.geom
         	FROM get_shrunk_grids_in_utm(project_id, distance, do_mockup_grid) AS gsgiu
     	)
-    	-- Calculate total area of the shrunk grids
     	SELECT COALESCE(SUM(ST_Area(sg.geom)), 0) INTO area_of_shrunk_grids
     	FROM shrunk_grids AS sg;
 
-    	-- Calculate number of nodes within the border buffer
-    	WITH original_grids AS (
-        	SELECT ggiu.gid, ggiu.geom
-        	FROM get_grids_in_utm(project_id, do_mockup_grid) AS ggiu
-    	),
-    	shrunk_grids AS (
-        	SELECT gsgiu.gid, gsgiu.geom
-        	FROM get_shrunk_grids_in_utm(project_id, distance, do_mockup_grid) AS gsgiu
-    	),
-    	border_buffer AS (
-        	SELECT og.gid, ST_Difference(og.geom, sg.geom) AS geom
-        	FROM original_grids AS og
-        	JOIN shrunk_grids AS sg
-            	ON og.gid = sg.gid
-    	),
-    	nonconnecting_nodes AS (
-        	SELECT ST_Transform(gncsen.node, utm_epsg) AS node
-        	FROM get_nonconnecting_start_end_nodes(project_id) AS gncsen
-    	)
-    	SELECT COUNT(*) INTO nodes_in_border_buffer
-    	FROM nonconnecting_nodes AS nn
-    	JOIN border_buffer AS bb
-        	ON ST_Within(nn.node, bb.geom);
-
-   	 WITH original_grids AS (
-        	SELECT ggiu.gid, ggiu.geom
-        	FROM get_grids_in_utm(project_id, do_mockup_grid) AS ggiu
-    	),
-   	 shrunk_grids AS (
-        	SELECT gsgiu.gid, gsgiu.geom
-        	FROM get_shrunk_grids_in_utm(project_id, distance, do_mockup_grid) AS gsgiu
-    	),
-   	 border_buffer AS (
-        	SELECT og.gid, ST_Difference(og.geom, sg.geom) AS geom
-        	FROM original_grids AS og
-        	JOIN shrunk_grids AS sg
-            	ON og.gid = sg.gid
-    	)
     	-- Calculate total area of the border buffer
-    	SELECT COALESCE(SUM(ST_Area(bb.geom)), 0) INTO area_of_border_buffer
-    	FROM border_buffer AS bb;
+    	area_of_border_buffer := total_area_of_grids - area_of_shrunk_grids;
 
     	-- Calculate nodes per unit area
     	nodes_per_area_shrunk_grids :=
@@ -212,12 +187,14 @@ DROP FUNCTION IF EXISTS continuation;
 CREATE FUNCTION continuation(
 	project_ids INT[],
 	shrink_distances DOUBLE PRECISION[],
-	grid_types TEXT[] DEFAULT ARRAY['ORIGINAL']::TEXT[]
+	grid_types TEXT[] DEFAULT ARRAY['ORIGINAL']::TEXT[],
+	shrink_types TEXT[] DEFAULT ARRAY['distance']::TEXT[]
 )
 RETURNS TABLE(
 	project_id INT,
 	grid_type TEXT,
 	shrink_distance DOUBLE PRECISION,
+	shrink_type TEXT,
 	nodes_in_shrunk_grids BIGINT,
 	nodes_in_border_buffer BIGINT,
 	area_of_shrunk_grids DOUBLE PRECISION,
@@ -231,7 +208,13 @@ DECLARE
 	rec RECORD;
 	i INT;
 	do_mockup_grid BOOLEAN;
+	is_percentage BOOLEAN;
 BEGIN
+	IF array_length(project_ids, 1) = 0 THEN
+		RAISE NOTICE 'No projects to process';
+		RETURN;
+	END IF;
+
 	-- Iterate over each project_id
 	FOR i IN 1..array_length(project_ids, 1) LOOP
     	current_project_id := project_ids[i];
@@ -241,19 +224,25 @@ BEGIN
         	current_distance := shrink_distances[j];
 
 			-- Iterate over grid_types
-		FOR i IN 1..array_length(grid_types, 1) LOOP
-			RAISE NOTICE 'Grid type: %', grid_types[i];
-			do_mockup_grid := grid_types[i] = 'MOCKUP';
-		
-				-- Collect results from continuation_per_project
-				FOR project_id, grid_type, shrink_distance, nodes_in_shrunk_grids, nodes_in_border_buffer, area_of_shrunk_grids, area_of_border_buffer, nodes_per_area_shrunk_grids, nodes_per_area_border_buffer IN
-					SELECT current_project_id AS project_id, grid_types[i] AS grid_type, cpp.shrink_distance, cpp.nodes_in_shrunk_grids, cpp.nodes_in_border_buffer, cpp.area_of_shrunk_grids, cpp.area_of_border_buffer, cpp.nodes_per_area_shrunk_grids, cpp.nodes_per_area_border_buffer FROM continuation_per_project(current_project_id, ARRAY[current_distance], do_mockup_grid) as cpp
-				LOOP
-					-- Return each row
-					RETURN NEXT;
+			FOR k IN 1..array_length(grid_types, 1) LOOP
+				RAISE NOTICE 'Grid type: %', grid_types[k];
+				do_mockup_grid := grid_types[k] = 'MOCKUP';
+
+				-- Iterate over shrink_types
+				FOR l IN 1..array_length(shrink_types, 1) LOOP
+					RAISE NOTICE 'Grid type: %', shrink_types[l];
+					is_percentage := shrink_types[l] = 'percentage';
+			
+					-- Collect results from continuation_per_project
+					FOR project_id, grid_type, shrink_distance, shrink_type, nodes_in_shrunk_grids, nodes_in_border_buffer, area_of_shrunk_grids, area_of_border_buffer, nodes_per_area_shrunk_grids, nodes_per_area_border_buffer IN
+						SELECT current_project_id AS project_id, grid_types[k] AS grid_type, cpp.shrink_distance, shrink_types[l] AS shrink_type, cpp.nodes_in_shrunk_grids, cpp.nodes_in_border_buffer, cpp.area_of_shrunk_grids, cpp.area_of_border_buffer, cpp.nodes_per_area_shrunk_grids, cpp.nodes_per_area_border_buffer FROM continuation_per_project(current_project_id, ARRAY[current_distance], do_mockup_grid, is_percentage) as cpp
+					LOOP
+						-- Return each row
+						RETURN NEXT;
+					END LOOP;
 				END LOOP;
-        	END LOOP;
-    	END LOOP;
+			END LOOP;
+		END LOOP;
 	END LOOP;
 
 	RETURN;  -- End of function
