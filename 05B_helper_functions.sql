@@ -388,15 +388,7 @@ BEGIN
 
         -- If the accumulated area exceeds the target, clip the last polygon to fit the exact area
         IF accumulated_area > target_total_area THEN
-            selected_geom := ST_Intersection(
-                selected_geom,
-                ST_MakeEnvelope(
-                    ST_XMin(selected_geom), ST_YMin(selected_geom),
-                    ST_XMin(selected_geom) + sqrt(target_total_area / ST_Area(selected_geom)) * (ST_XMax(selected_geom) - ST_XMin(selected_geom)),
-                    ST_YMin(selected_geom) + sqrt(target_total_area / ST_Area(selected_geom)) * (ST_YMax(selected_geom) - ST_YMin(selected_geom)),
-                    ST_SRID(selected_geom)
-                )
-            );
+            selected_geom := ST_Dilate(selected_geom, (target_total_area - (accumulated_area - ST_Area(selected_geom))) / ST_Area(selected_geom));
             accumulated_area := target_total_area;
         END IF;
 
