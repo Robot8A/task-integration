@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS mockup_grids (
 
 CREATE TABLE IF NOT EXISTS mockup_polygon_grids (
     project_id INT,
+    taskid INT,
     geom geometry,
     percentage_covered DOUBLE PRECISION
 );

@@ -8,6 +8,7 @@ WITH proj_ids AS (
         SELECT co.project_id
         FROM continuation co
         WHERE co.project_id = proj_id
+        AND grid_type = 'MOCKUP-POLY'
         LIMIT 1
         )
     LIMIT 200
@@ -17,7 +18,7 @@ SELECT project_id, grid_type, shrink_distance, shrink_type, nodes_in_shrunk_grid
 FROM continuation(
 	(SELECT array_agg(ids) FROM proj_ids),
 	ARRAY[5.0, 10.0, 15.0],
-    ARRAY['ORIGINAL'],
+    ARRAY['MOCKUP-POLY'],
     ARRAY['percentage']
 )
 ON CONFLICT (project_id, grid_type, shrink_distance, shrink_type) 
