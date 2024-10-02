@@ -203,6 +203,10 @@ DECLARE
     scale_factor double precision;
 BEGIN
 
+	IF shrink_value = 0 OR ST_Area(geom) = 0 THEN
+		RETURN geom;
+	END IF;
+
     IF is_percentage THEN
         -- Convert percentage to a factor between 0 and 1
         scale_factor := 1 - (shrink_value / 100.0);
