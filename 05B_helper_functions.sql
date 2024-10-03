@@ -337,7 +337,7 @@ $$ LANGUAGE plpgsql;
 
 -- Divides a grid cell into subpolygons with a target area, with n being the number of points created for the random polygons and m being the target area percentage
 DROP FUNCTION IF EXISTS divide_polygon;
-CREATE OR REPLACE FUNCTION divide_polygon(input_geom GEOMETRY, n INTEGER, m NUMERIC)
+CREATE OR REPLACE FUNCTION divide_polygon(input_geom GEOMETRY, n INTEGER, m DOUBLE PRECISION)
 RETURNS TABLE(geom GEOMETRY) AS $$
 DECLARE
     total_area NUMERIC;
@@ -408,7 +408,7 @@ END $$ LANGUAGE plpgsql;
 
 -- Generates mockup polygon grid with project_id
 DROP FUNCTION IF EXISTS generate_mockup_polygon_grid;
-CREATE OR REPLACE FUNCTION generate_mockup_polygon_grid(project_id INT, percentage_covered NUMERIC)
+CREATE OR REPLACE FUNCTION generate_mockup_polygon_grid(project_id INT, percentage_covered DOUBLE PRECISION)
 RETURNS TABLE (taskid INT, geom GEOMETRY) AS $$
 BEGIN
     -- Return a combined result set from divide_polygon for all grids
