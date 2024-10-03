@@ -60,6 +60,6 @@ BEGIN
         RAISE NOTICE 'TIME % | Project ID: %', clock_timestamp(), current_project_id;
         INSERT INTO mockup_polygon_grids (project_id, taskid, geom, percentage_covered)
         SELECT current_project_id AS project_id, gmpg.taskid, gmpg.geom, perc_covered
-        FROM generate_mockup_polygon_grid(current_project_id, 10) AS gmpg;
+        FROM generate_mockup_polygon_grid(current_project_id, perc_covered) AS gmpg;
     END LOOP;
 END $$;
