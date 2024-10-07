@@ -95,24 +95,53 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Returns true if all grids are fully adjacent
+-- Returns true if all grids are fully adjacent and not overlapping
 DROP FUNCTION IF EXISTS project_has_fully_adjacent_cells;
 CREATE FUNCTION project_has_fully_adjacent_cells(project_id INT)
 RETURNS BOOLEAN AS $$
 DECLARE
 	num_clusters INT;
+	overlapping_count INT;
 BEGIN
 	-- Count the number of unique clusters where geometries intersect
 	SELECT COUNT(DISTINCT cluster) INTO num_clusters
 	FROM (
-    	SELECT
-        	unnest(ST_ClusterIntersecting(geom)) AS cluster
-    	FROM
-        	get_grids(project_id)
+		SELECT
+			unnest(ST_ClusterIntersecting(geom)) AS cluster
+		FROM (
+			SELECT 
+				CASE 
+					WHEN ST_IsValid(geom) THEN geom 
+					ELSE ST_MakeValid(geom) 
+				END AS geom
+			FROM get_grids(project_id)
+		) AS valid_geoms
 	) AS clustered_areas;
 
-	-- Return true if all geometries are in a single cluster, otherwise false
-	RETURN num_clusters = 1;
+	-- Count the number of overlapping geometries
+	SELECT COUNT(*) INTO overlapping_count
+	FROM (
+		SELECT g1.geom
+		FROM (
+			SELECT 
+				CASE 
+					WHEN ST_IsValid(geom) THEN geom 
+					ELSE ST_MakeValid(geom) 
+				END AS geom, gid
+			FROM get_grids(project_id)
+		) g1, (
+			SELECT 
+				CASE 
+					WHEN ST_IsValid(geom) THEN geom 
+					ELSE ST_MakeValid(geom) 
+				END AS geom, gid
+			FROM get_grids(project_id)
+		) g2
+		WHERE g1.gid <> g2.gid AND ST_Overlaps(g1.geom, g2.geom)
+	) AS overlapping_areas;
+
+	-- Return true if all geometries are in a single cluster and there are no overlaps, otherwise false
+	RETURN num_clusters = 1 AND overlapping_count = 0;
 END;
 $$ LANGUAGE plpgsql;
 
