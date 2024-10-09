@@ -107,8 +107,18 @@ BEGIN
 	INTO utm_epsg;
 
 	-- Save total number of nonconnecting nodes
-	SELECT count(*) INTO total_number_of_nonconnecting_nodes
-	FROM get_nonconnecting_start_end_nodes(project_id);
+	WITH grids AS (
+        	SELECT ggiu.gid, ggiu.geom
+        	FROM get_grids_in_utm(project_id, distance, grid_type, is_percentage) AS ggiu
+	),
+	nonconnecting_nodes AS (
+		SELECT ST_Transform(gncsen.node, utm_epsg) AS node
+		FROM get_nonconnecting_start_end_nodes(project_id) AS gncsen
+	)
+	SELECT COUNT(*) INTO total_number_of_nonconnecting_nodes
+	FROM nonconnecting_nodes AS nn
+	JOIN grids AS g
+		ON ST_Within(nn.node, g.geom);
 
 	-- Save total area of grids
 	SELECT COALESCE(SUM(ST_Area(ggiu.geom)), 0) INTO total_area_of_grids

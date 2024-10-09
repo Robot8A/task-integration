@@ -39,8 +39,12 @@ for project_id in $project_ids; do
         # Unzip file
         unzip -o data/osm_roads_${project_id}.zip -d $temp_dir
 
+        # Preprocess GeoJSON to remove MultiLineString geometries (relations type=route, route=road)
+        jq '.features |= map(select(.geometry.type == "LineString"))' \
+        $temp_dir/hotosm_project_${project_id}_roads_lines_geojson.geojson > $temp_dir/filtered_roads_${project_id}.geojson
+
         # Transform GeoJSON to SQL
-        ogr2ogr -f "PostgreSQL" PG:"host=localhost port=5432 dbname=hotosm user=postgres password=postgres" $temp_dir/hotosm_project_${project_id}_roads_lines_geojson.geojson -nln ${table_name} -nlt PROMOTE_TO_MULTI -lco GEOMETRY_NAME=geom -lco FID=gid -append -update
+        ogr2ogr -f "PostgreSQL" PG:"host=localhost port=5432 dbname=hotosm user=postgres password=postgres" $temp_dir/filtered_roads_${project_id}.geojson -nln ${table_name} -nlt LINESTRING -lco GEOMETRY_NAME=geom -lco FID=gid -append -update
     
         if [ $? -ne 0 ]; then
             echo "Failed to transform roads of project ${project_id}"
