@@ -369,7 +369,8 @@ DROP FUNCTION IF EXISTS divide_polygon;
 CREATE OR REPLACE FUNCTION divide_polygon(input_geom GEOMETRY, n INTEGER, m DOUBLE PRECISION)
 RETURNS TABLE(geom GEOMETRY) AS $$
 DECLARE
-    total_area NUMERIC;
+    valid_geom GEOMETRY;
+	total_area NUMERIC;
     target_total_area NUMERIC;
     accumulated_area NUMERIC := 0;
     remaining_area NUMERIC;
@@ -381,11 +382,31 @@ DECLARE
     temp_geom GEOMETRY;
     temp_id INTEGER;
 BEGIN
-    -- Step 1: Calculate the total area of the input polygon
-    total_area := ST_Area(input_geom);
 
-	IF total_area = 0 OR NOT ST_IsValid(input_geom) THEN
-		RAISE NOTICE 'Input geometry is invalid or has zero area';
+	-- Check if the input geometry is valid, otherwise fix it
+	IF ST_IsValid(input_geom) THEN
+			valid_geom := input_geom;
+	ELSE
+		RAISE NOTICE 'Input geometry is invalid, fixing geometry';
+		valid_geom := ST_MakeValid(input_geom);
+
+		IF GeometryType(valid_geom) = 'GEOMETRYCOLLECTION' THEN
+            -- Extract only the Polygon or MultiPolygon geometries from the collection
+            valid_geom := (
+                SELECT ST_Collect(valid_geoms.geom) -- Re-collect into a single geometry
+                FROM (
+                    SELECT dumped_geom.geom
+                    FROM ST_Dump(valid_geom) AS dumped_geom
+                    WHERE GeometryType(dumped_geom.geom) IN ('POLYGON', 'MULTIPOLYGON')
+                ) AS valid_geoms
+            );
+        END IF;
+	END IF;
+	-- Step 1: Calculate the total area of the input polygon
+	total_area := ST_Area(valid_geom);
+
+	IF total_area = 0 THEN
+		RAISE NOTICE 'Input geometry has zero area';
 		RETURN;
 	END IF;
 
@@ -395,10 +416,10 @@ BEGIN
     -- Step 3: Generate Voronoi polygons from random points within the polygon
     SELECT array_agg(clipped_voronoi.geom) INTO voronoi_geoms
     FROM (
-        SELECT ST_Intersection(v.geom, input_geom) AS geom
+        SELECT ST_Intersection(v.geom, valid_geom) AS geom
         FROM (
             SELECT (ST_Dump(ST_VoronoiPolygons(ST_Collect(random_points.geom)))).geom AS geom
-            FROM (SELECT ST_GeneratePoints(input_geom, n) AS geom) AS random_points
+            FROM (SELECT ST_GeneratePoints(valid_geom, n) AS geom) AS random_points
         ) AS v
     ) AS clipped_voronoi;
 
