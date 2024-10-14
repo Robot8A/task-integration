@@ -109,7 +109,7 @@ BEGIN
 	-- Save total number of nonconnecting nodes
 	WITH grids AS (
         	SELECT ggiu.gid, ggiu.geom
-        	FROM get_grids_in_utm(project_id, distance, grid_type, is_percentage) AS ggiu
+        	FROM get_grids_in_utm(project_id) AS ggiu
 	),
 	nonconnecting_nodes AS (
 		SELECT ST_Transform(gncsen.node, utm_epsg) AS node
