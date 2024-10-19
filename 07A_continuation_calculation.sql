@@ -12,14 +12,12 @@ BEGIN
     grid_types := ARRAY['MOCKUP-POLY'::TEXT, 'ORIGINAL'::TEXT];
     
     SELECT ARRAY (
-        SELECT proj_id AS ids
-        FROM public.mapping_types
-        WHERE typename = 'ROADS'
-        AND project_has_fully_adjacent_cells(proj_id)
-        AND NOT EXISTS (
+        SELECT distinct(nn.project_id) AS ids
+        FROM nonconnecting_nodes AS nn
+        WHERE NOT EXISTS (
             SELECT co.project_id
             FROM continuation co
-            WHERE co.project_id = proj_id
+            WHERE co.project_id = nn.project_id
             AND grid_type = ANY(grid_types)
             LIMIT 1
             )

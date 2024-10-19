@@ -133,7 +133,7 @@ BEGIN
 	SELECT COUNT(*) INTO total_number_of_nonconnecting_nodes
 	FROM nonconnecting_nodes AS nn
 	JOIN grids AS g
-		ON ST_Within(nn.node, g.geom)
+		ON ST_Within(nn.geom, g.geom)
 	WHERE nn.project_id = continuation_per_project.project_id;
 
 	-- Save total area of grids
@@ -167,7 +167,7 @@ BEGIN
     	SELECT COUNT(*) INTO nodes_in_shrunk_grids
     	FROM nonconnecting_nodes AS nn
     	JOIN shrunk_grids AS sg
-        	ON ST_Within(nn.node, sg.geom)
+        	ON ST_Within(nn.geom, sg.geom)
 		WHERE nn.project_id = continuation_per_project.project_id;
 
 		-- Calculate number of nodes within buffer
