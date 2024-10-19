@@ -214,7 +214,7 @@ BEGIN
 
 	-- Return transformed geometries using the calculated UTM EPSG code
 	RETURN QUERY
-	SELECT gg.gid, gg.taskid, ST_Transform(gg.geom, utm_epsg) AS geom
+	SELECT gg.gid, gg.taskid, ST_Transform(CASE WHEN ST_IsValid(gg.geom) THEN gg.geom ELSE ST_MakeValid(gg.geom) END, utm_epsg) AS geom
 	FROM get_grids(project_id, do_mockup_grid) AS gg;
 END;
 $$ LANGUAGE plpgsql;
