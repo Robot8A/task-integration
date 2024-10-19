@@ -1,13 +1,19 @@
-CREATE TABLE IF NOT EXISTS mockup_grids (
-    project_id INT,
-    geom geometry
-);
+---CREATE TABLE IF NOT EXISTS mockup_grids (
+---    project_id INT,
+---    geom geometry
+---);
 
 CREATE TABLE IF NOT EXISTS mockup_polygon_grids (
     project_id INT,
     taskid INT,
     geom geometry,
     percentage_covered DOUBLE PRECISION
+);
+
+CREATE TABLE IF NOT EXISTS nonconnecting_nodes (
+    project_id INT,
+    geom geometry,
+    point_type TEXT
 );
 
 CREATE TABLE IF NOT EXISTS continuation (
