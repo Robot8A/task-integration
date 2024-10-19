@@ -54,6 +54,25 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Returns all nodes in the roads of a project that are not connecting, in UTM
+DROP FUNCTION IF EXISTS get_nonconnecting_start_end_nodes_in_utm;
+CREATE FUNCTION get_nonconnecting_start_end_nodes_in_utm(project_id INT)
+RETURNS TABLE(node geometry, point_type TEXT) AS $$
+DECLARE
+	utm_epsg INTEGER;
+BEGIN
+	-- Determine the SRID of the original grids in UTM
+	SELECT ST_SRID((SELECT geom
+                	FROM get_grids_in_utm(project_id)
+                	LIMIT 1))
+	INTO utm_epsg;
+
+	RETURN QUERY
+	SELECT ST_Transform(gncsen.node, utm_epsg) AS node, gncsen.point_type
+	FROM get_nonconnecting_start_end_nodes(project_id) AS gncsen;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Calculates the continuation metrics for a project:
 -- - Number of nodes within shrunk grids
 -- - Number of nodes within border buffer
@@ -110,15 +129,12 @@ BEGIN
 	WITH grids AS (
         	SELECT ggiu.gid, ggiu.geom
         	FROM get_grids_in_utm(project_id) AS ggiu
-	),
-	nonconnecting_nodes AS (
-		SELECT ST_Transform(gncsen.node, utm_epsg) AS node
-		FROM get_nonconnecting_start_end_nodes(project_id) AS gncsen
 	)
 	SELECT COUNT(*) INTO total_number_of_nonconnecting_nodes
 	FROM nonconnecting_nodes AS nn
 	JOIN grids AS g
-		ON ST_Within(nn.node, g.geom);
+		ON ST_Within(nn.node, g.geom)
+	WHERE nn.project_id = continuation_per_project.project_id;
 
 	-- Save total area of grids
 	SELECT COALESCE(SUM(ST_Area(ggiu.geom)), 0) INTO total_area_of_grids
@@ -147,15 +163,12 @@ BEGIN
     	WITH shrunk_grids AS (
         	SELECT gsgiu.gid, gsgiu.geom
         	FROM get_shrunk_grids_in_utm(project_id, distance, grid_type, is_percentage) AS gsgiu
-    	),
-    	nonconnecting_nodes AS (
-        	SELECT ST_Transform(gncsen.node, utm_epsg) AS node
-        	FROM get_nonconnecting_start_end_nodes(project_id) AS gncsen
     	)
     	SELECT COUNT(*) INTO nodes_in_shrunk_grids
     	FROM nonconnecting_nodes AS nn
     	JOIN shrunk_grids AS sg
-        	ON ST_Within(nn.node, sg.geom);
+        	ON ST_Within(nn.node, sg.geom)
+		WHERE nn.project_id = continuation_per_project.project_id;
 
 		-- Calculate number of nodes within buffer
 		nodes_in_border_buffer := total_number_of_nonconnecting_nodes - nodes_in_shrunk_grids;

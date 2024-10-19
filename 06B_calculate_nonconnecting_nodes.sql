@@ -18,7 +18,7 @@ BEGIN
             WHERE nn.project_id = proj_id
             LIMIT 1
           )
-        LIMIT 100
+        --- LIMIT 100
     ) subquery;
     
     -- Iterate over each project_id
@@ -26,6 +26,6 @@ BEGIN
         RAISE NOTICE 'TIME % | Project ID: %', clock_timestamp(), current_project_id;
         INSERT INTO nonconnecting_nodes (project_id, geom, point_type)
         SELECT current_project_id AS project_id, gncsen.node AS geom, gncsen.point_type
-        FROM get_nonconnecting_start_end_nodes(current_project_id) AS gncsen;
+        FROM get_nonconnecting_start_end_nodes_in_utm(current_project_id) AS gncsen;
     END LOOP;
 END $$;
