@@ -237,6 +237,10 @@ BEGIN
 	END IF;
 
     IF is_percentage THEN
+		IF shrink_value = 100 THEN
+			RETURN ST_MakeEmpty();
+		END IF;
+
         -- Convert percentage to a factor between 0 and 1
         scale_factor := 1 - (shrink_value / 100.0);
         
@@ -375,6 +379,7 @@ DECLARE
     accumulated_area NUMERIC := 0;
     remaining_area NUMERIC;
     selected_geom GEOMETRY;
+	selected_geom_old GEOMETRY;
     voronoi_geoms GEOMETRY[];
     voronoi_ids INTEGER[];
     i INTEGER;
@@ -442,7 +447,15 @@ BEGIN
 
         -- If the accumulated area exceeds the target, clip the last polygon to fit the exact area
         IF accumulated_area > target_total_area THEN
-            selected_geom := ST_Dilate(selected_geom, (target_total_area - (accumulated_area - ST_Area(selected_geom))) / ST_Area(selected_geom));
+			selected_geom_old := selected_geom;
+            selected_geom := ST_Dilate(selected_geom_old, (target_total_area - (accumulated_area - ST_Area(selected_geom_old))) / ST_Area(selected_geom_old));
+
+			-- If ST_Dilate fails, return the original geometry
+			IF selected_geom IS NULL THEN
+				selected_geom := selected_geom_old;
+				RAISE NOTICE 'Failed to dilate geometry, returning original geometry';
+			END IF;
+
             accumulated_area := target_total_area;
         END IF;
 
