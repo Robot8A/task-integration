@@ -39,7 +39,8 @@ if __name__ == "__main__":
             perc_mapped INT,
             perc_validated INT,
             created DATE,
-            last_updated DATE
+            last_updated DATE,
+            total_mappers INT
         )
     """)
     conn.commit()
@@ -85,40 +86,42 @@ if __name__ == "__main__":
 
     for proj_id in tqdm(input_data, unit="project(s)"):
         with open(f"data/project_{str(proj_id)}.json") as f:
-            data = json.load(f)
+            with open(f"data/project_{str(proj_id)}_statistics.json") as s:
+                data = json.load(f)
+                statistics = json.load(s)
 
-            # Process data and store it in SQL database
-            cursor.execute("""
-                INSERT INTO projects (id, priority, difficulty, perc_mapped, perc_validated)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (proj_id, data["projectPriority"], data["difficulty"], data["percentMapped"], data["percentValidated"]))
-            conn.commit()
-
-            # Insert mapping types into mapping_types table
-            for m in data["mappingTypes"]:
+                # Process data and store it in SQL database
                 cursor.execute("""
-                    INSERT INTO mapping_types (typename, proj_id)
-                    VALUES (%s, %s)
-                """, (m, proj_id))
+                    INSERT INTO projects (id, priority, difficulty, perc_mapped, perc_validated, created, last_updated, total_mappers)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (proj_id, data["projectPriority"], data["difficulty"], data["percentMapped"], data["percentValidated"], data["created"], data["lastUpdated"], statistics["totalMappers"]))
                 conn.commit()
 
-            # Insert mapping interests into mapping_interest table
-            if data.get("interests"):
-                for i in data["interests"]:
+                # Insert mapping types into mapping_types table
+                for m in data["mappingTypes"]:
                     cursor.execute("""
-                        INSERT INTO mapping_interest (int_id, int_name, proj_id)
-                        VALUES (%s, %s, %s)
-                    """, (i["id"], i["name"], proj_id))
+                        INSERT INTO mapping_types (typename, proj_id)
+                        VALUES (%s, %s)
+                    """, (m, proj_id))
                     conn.commit()
 
-            # Insert countries into countries table
-            if data.get("countryTag"):
-                for c in data["countryTag"]:
-                    cursor.execute(f"""
-                        INSERT INTO countries (country_name, proj_id)
-                        VALUES (%s, %s)
-                    """, (c, proj_id))
-                    conn.commit()
+                # Insert mapping interests into mapping_interest table
+                if data.get("interests"):
+                    for i in data["interests"]:
+                        cursor.execute("""
+                            INSERT INTO mapping_interest (int_id, int_name, proj_id)
+                            VALUES (%s, %s, %s)
+                        """, (i["id"], i["name"], proj_id))
+                        conn.commit()
+
+                # Insert countries into countries table
+                if data.get("countryTag"):
+                    for c in data["countryTag"]:
+                        cursor.execute(f"""
+                            INSERT INTO countries (country_name, proj_id)
+                            VALUES (%s, %s)
+                        """, (c, proj_id))
+                        conn.commit()
 
     # Close the database cursor and the connection
     cursor.close()
