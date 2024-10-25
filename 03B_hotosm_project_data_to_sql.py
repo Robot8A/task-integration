@@ -2,12 +2,13 @@
 """
 This is a Python script for processing HOTOSM project data and storing it in a SQL database.
 Author: Héctor Ochoa Ortiz
-Date: 2024-07-11
+Last update: 2024-10-25
 """
 
 import json
 from tqdm import tqdm
 import psycopg2
+import dateutil.parser
 
 proj_ids_filename = "project_ids.txt"
 
@@ -93,8 +94,17 @@ if __name__ == "__main__":
                 # Process data and store it in SQL database
                 cursor.execute("""
                     INSERT INTO projects (id, priority, difficulty, perc_mapped, perc_validated, created, last_updated, total_mappers)
-                    VALUES (%s, %s, %s, %s, %s)
-                """, (proj_id, data["projectPriority"], data["difficulty"], data["percentMapped"], data["percentValidated"], data["created"], data["lastUpdated"], statistics["totalMappers"]))
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, (proj_id,
+                      data["projectPriority"],
+                      data["difficulty"],
+                      data["percentMapped"],
+                      data["percentValidated"],
+                      dateutil.parser.parse(data["created"]),
+                      dateutil.parser.parse(data["lastUpdated"]),
+                      statistics["totalMappers"]
+                     )
+                )
                 conn.commit()
 
                 # Insert mapping types into mapping_types table
