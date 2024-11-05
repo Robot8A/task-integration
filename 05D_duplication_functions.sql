@@ -4,18 +4,28 @@ CREATE FUNCTION get_duplicated_buildings(
     threshold FLOAT DEFAULT 0.2
 )
 RETURNS TABLE(building_a_id INT, building_b_id INT, intersection_geom GEOMETRY) AS $$
+DECLARE
+    utm_epsg INT;
 BEGIN
+    -- Determine the SRID of the original grids in UTM
+	SELECT ST_SRID((SELECT geom
+                	FROM get_grids_in_utm(project_id)
+                	LIMIT 1))
+	INTO utm_epsg;
+
     RETURN QUERY
     WITH grids AS (
-        SELECT geom
-        FROM hotosm_grids hg
-        WHERE hg.project_id = get_duplicated_buildings.project_id
+        SELECT geom from get_grids(project_id)
     ),
-    buildings AS (
-        SELECT b.osm_id, b.geom
+    buildings_wgs84 AS (
+        SELECT b.osm_id, b.geom AS geom
         FROM osm_buildings b
         JOIN grids g ON b.geom && g.geom  -- Use bounding box intersection, to reduce complexity
         WHERE ST_Intersects(b.geom, g.geom)
+    ),
+    buildings AS (
+        SELECT bw.osm_id, ST_Transform(bw.geom, utm_epsg) AS geom
+        FROM buildings_wgs84 bw
     ),
     filtered_buildings AS (
         SELECT a.osm_id AS building_a_id, a.geom AS building_a_geom, b.osm_id AS building_b_id, b.geom AS building_b_geom, ST_Intersection(a.geom, b.geom) AS intersection_geom

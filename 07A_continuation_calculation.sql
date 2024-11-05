@@ -8,7 +8,7 @@ DECLARE
     current_project_id INT; -- Variable to store individual project ID during the loop
 BEGIN
     distances := ARRAY[5.0::FLOAT, 10.0::FLOAT, 15.0::FLOAT];
-    --- distances := array(SELECT generate_series(0.0, 25.0));
+    --- distances := array(SELECT generate_series(0.0, 100.0));
     grid_types := ARRAY['MOCKUP-POLY'::TEXT, 'ORIGINAL'::TEXT];
     
     SELECT ARRAY (
