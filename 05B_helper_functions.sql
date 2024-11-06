@@ -197,10 +197,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Returns grids in UTM projection
-DROP FUNCTION IF EXISTS get_grids_in_utm;
-CREATE FUNCTION get_grids_in_utm(project_id INT, do_mockup_grid BOOLEAN DEFAULT FALSE)
-RETURNS TABLE(gid INTEGER, taskid INTEGER, geom GEOMETRY) AS $$
+-- Returns an accurate UTM zone number for a given project
+DROP FUNCTION IF EXISTS get_utm_zone;
+CREATE FUNCTION get_utm_zone(project_id INT)
+RETURNS INT AS $$
 DECLARE
 	utm_epsg INTEGER;
 BEGIN
@@ -211,6 +211,20 @@ BEGIN
     	FROM get_grids(project_id) AS gg
 	) AS union_gg
 	LIMIT 1;
+
+	RETURN utm_epsg;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Returns grids in UTM projection
+DROP FUNCTION IF EXISTS get_grids_in_utm;
+CREATE FUNCTION get_grids_in_utm(project_id INT, do_mockup_grid BOOLEAN DEFAULT FALSE)
+RETURNS TABLE(gid INTEGER, taskid INTEGER, geom GEOMETRY) AS $$
+DECLARE
+	utm_epsg INTEGER;
+BEGIN
+	-- Calculate the UTM EPSG code
+	SELECT get_utm_zone(project_id) INTO utm_epsg;
 
 	-- Return transformed geometries using the calculated UTM EPSG code
 	RETURN QUERY
