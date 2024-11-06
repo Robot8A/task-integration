@@ -30,6 +30,12 @@ CREATE TABLE IF NOT EXISTS continuation (
     PRIMARY KEY (project_id, grid_type, shrink_distance, shrink_type)
 );
 
+CREATE TABLE IF NOT EXISTS buildings_utm (
+    osm_id INT,
+    geom GEOMETRY,
+    project_id INT
+);
+
 CREATE TABLE IF NOT EXISTS geometry_consistency (
     project_id INT,
     task_id INT,
