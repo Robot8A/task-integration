@@ -8,10 +8,7 @@ DECLARE
     utm_epsg INT;
 BEGIN
     -- Determine the SRID of the original grids in UTM
-	SELECT ST_SRID((SELECT geom
-                	FROM get_grids_in_utm(project_id)
-                	LIMIT 1))
-	INTO utm_epsg;
+	SELECT get_utm_zone(project_id) INTO utm_epsg;
 
     RETURN QUERY
     WITH grids AS (

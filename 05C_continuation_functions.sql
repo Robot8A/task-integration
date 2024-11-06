@@ -62,10 +62,7 @@ DECLARE
 	utm_epsg INTEGER;
 BEGIN
 	-- Determine the SRID of the original grids in UTM
-	SELECT ST_SRID((SELECT geom
-                	FROM get_grids_in_utm(project_id)
-                	LIMIT 1))
-	INTO utm_epsg;
+	SELECT get_utm_zone(project_id) INTO utm_epsg;
 
 	RETURN QUERY
 	SELECT ST_Transform(gncsen.node, utm_epsg) AS node, gncsen.point_type
@@ -120,10 +117,7 @@ BEGIN
 	END IF;
 
 	-- Determine the SRID of the original grids in UTM
-	SELECT ST_SRID((SELECT geom
-                	FROM get_grids_in_utm(project_id)
-                	LIMIT 1))
-	INTO utm_epsg;
+	SELECT get_utm_zone(project_id) INTO utm_epsg;
 
 	-- Save total number of nonconnecting nodes
 	WITH grids AS (
