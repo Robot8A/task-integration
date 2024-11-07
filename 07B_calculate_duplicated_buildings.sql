@@ -14,14 +14,12 @@ BEGIN
     -- Get project IDs into an array
     SELECT array_agg(ids) INTO project_ids
     FROM (
-        SELECT DISTINCT proj_id AS ids
-        FROM public.mapping_types
-        WHERE typename = 'BUILDINGS'
-        AND project_has_fully_adjacent_cells(proj_id)
-        AND NOT EXISTS (
+        SELECT DISTINCT project_id AS ids
+        FROM public.buildings_utm bu
+        WHERE NOT EXISTS (
             SELECT db.project_id
             FROM duplicated_buildings db
-            WHERE db.project_id = proj_id
+            WHERE db.project_id = bu.project_id
             LIMIT 1
           )
         --- LIMIT 100

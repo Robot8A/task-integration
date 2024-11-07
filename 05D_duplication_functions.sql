@@ -39,7 +39,7 @@ BEGIN
     WITH buildings AS (
         SELECT bu.osm_id, bu.geom AS geom
         FROM buildings_utm bu
-        WHERE bu.project_id = project_id
+        WHERE bu.project_id = get_duplicated_buildings.project_id
     ),
     filtered_buildings AS (
         SELECT a.osm_id AS building_a_id, a.geom AS building_a_geom, b.osm_id AS building_b_id, b.geom AS building_b_geom, ST_Intersection(a.geom, b.geom) AS intersection_geom
