@@ -30,6 +30,20 @@ CREATE TABLE IF NOT EXISTS continuation (
     PRIMARY KEY (project_id, grid_type, shrink_distance, shrink_type)
 );
 
+CREATE TABLE IF NOT EXISTS duplication (
+    project_id INT,
+    grid_type TEXT,
+    shrink_distance DOUBLE PRECISION,
+    shrink_type TEXT,
+    nodes_in_shrunk_grids BIGINT,
+    nodes_in_border_buffer BIGINT,
+    area_of_shrunk_grids DOUBLE PRECISION,
+    area_of_border_buffer DOUBLE PRECISION,
+    nodes_per_area_shrunk_grids DOUBLE PRECISION,
+    nodes_per_area_border_buffer DOUBLE PRECISION,
+    PRIMARY KEY (project_id, grid_type, shrink_distance, shrink_type)
+);
+
 CREATE TABLE IF NOT EXISTS buildings_utm (
     osm_id INT,
     geom GEOMETRY,
