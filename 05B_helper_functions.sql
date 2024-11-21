@@ -504,3 +504,18 @@ BEGIN
     ) AS subpolygon_lateral;
 END $$ LANGUAGE plpgsql;
 
+DROP FUNCTION IF EXISTS get_surrounding_grids;
+CREATE FUNCTION get_surrounding_grids(project_id INT, task_id INT)
+RETURNS TABLE(gid INTEGER, taskid INTEGER, geom GEOMETRY) AS $$
+BEGIN
+	RETURN QUERY
+	SELECT g.gid, g.taskid, g.geom
+	FROM get_grids(project_id) g
+	WHERE ST_Touches(
+		(SELECT hg.geom
+		 FROM get_grids(project_id) hg
+		 WHERE hg.taskid = task_id
+		),
+		g.geom
+	);
+END $$ LANGUAGE plpgsql;

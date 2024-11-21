@@ -1,3 +1,19 @@
+DROP FUNCTION IF EXISTS calculate_avg_vertices_per_building_from_task;
+CREATE FUNCTION calculate_avg_vertices_per_building_from_task(project_id INT, task_id INT)
+RETURNS FLOAT AS $$
+DECLARE
+    vertices_sum FLOAT;
+    buildings_count INT;
+BEGIN
+    SELECT SUM(ST_NPoints(geom)) INTO vertices_sum
+    FROM get_buildings_from_task(project_id, task_id);
+
+    SELECT COUNT(*) INTO buildings_count
+    FROM get_buildings_from_task(project_id, task_id);
+
+    RETURN vertices_sum / NULLIF(buildings_count, 0);
+END $$ LANGUAGE plpgsql;
+
 -- Returns simplified buildings part of a task
 -- DROP FUNCTION IF EXISTS get_simplified_buildings_from_task;
 -- CREATE FUNCTION get_simplified_buildings_from_task(project_id INT, task_id INT, tolerance FLOAT)
