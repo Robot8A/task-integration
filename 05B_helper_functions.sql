@@ -346,23 +346,18 @@ BEGIN
 		WHERE hg.taskid = ANY(get_buildings_from_tasks.task_ids)
 		AND ST_Intersects(b.geom, hg.geom)
 	);
-END;
+END $$ LANGUAGE plpgsql;
 
 -- Returns task ids of the adjacent tasks
 DROP FUNCTION IF EXISTS get_adjacent_tasks;
 CREATE FUNCTION get_adjacent_tasks(project_id INT, task_id INT)
-RETURNS TABLE(gid INTEGER, taskid INTEGER, geom GEOMETRY) AS $$
+RETURNS TABLE(adjacent_task_id INTEGER) AS $$
 BEGIN
 	RETURN QUERY
-	SELECT g.gid, g.taskid, g.geom
-	FROM get_grids(project_id) g
-	WHERE ST_Touches(
-		(SELECT hg.geom
-		 FROM get_grids(project_id) hg
-		 WHERE hg.taskid = task_id
-		),
-		g.geom
-	);
+	SELECT adt.adjacent_task_id
+	FROM adjacent_tasks adt
+	WHERE adt.project_id = get_adjacent_tasks.project_id
+	AND adt.task_id = get_adjacent_tasks.task_id;
 END $$ LANGUAGE plpgsql;
 
 -- Divides a grid cell into subpolygons with a target area, with n being the number of points created for the random polygons and m being the target area percentage
