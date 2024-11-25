@@ -8,10 +8,9 @@ BEGIN
     -- Get project IDs into an array
     SELECT array_agg(ids) INTO project_ids
     FROM (
-        SELECT DISTINCT proj_id AS ids
-        FROM public.mapping_types
+        SELECT proj_id
+        FROM selected_projects
         WHERE typename = 'ROADS'
-        AND project_has_fully_adjacent_cells(proj_id)
         AND NOT EXISTS (
             SELECT nn.project_id
             FROM nonconnecting_nodes nn

@@ -315,62 +315,46 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Get buildings part of a task
-DROP FUNCTION IF EXISTS get_buildings_from_task;
-CREATE FUNCTION get_buildings_from_task(project_id INT, task_id INT)
-RETURNS TABLE(osm_id INTEGER, geom GEOMETRY) AS $$
-DECLARE
-    utm_epsg INTEGER;
-BEGIN
-     -- Determine the SRID of the original grids in UTM
-    SELECT ST_SRID((SELECT ggiu.geom
-                    FROM get_grids_in_utm(project_id) ggiu
-                    LIMIT 1))
-    INTO utm_epsg;
-
-    RETURN QUERY
-    SELECT b.osm_id, ST_Transform(b.geom, utm_epsg)
-    FROM osm_buildings b
-    WHERE b.project_id = get_buildings_from_task.project_id
-    AND ST_Intersects(b.geom, (
-        SELECT hg.geom
-        FROM get_grids(get_buildings_from_task.project_id) hg
-        WHERE hg.taskid = task_id
-        ));
-END;
-$$ LANGUAGE plpgsql;
+-- DROP FUNCTION IF EXISTS get_buildings_from_task;
+-- CREATE FUNCTION get_buildings_from_task(project_id INT, task_id INT)
+-- RETURNS TABLE(osm_id INTEGER, geom GEOMETRY) AS $$
+-- BEGIN
+-- 	RETURN QUERY
+-- 	SELECT b.osm_id, b.geom
+-- 	FROM buildings_utm b
+-- 	WHERE b.project_id = get_buildings_from_task.project_id
+-- 	AND ST_Intersects(b.geom, (
+-- 		SELECT hg.geom
+-- 		FROM get_grids_in_utm(get_buildings_from_task.project_id) hg
+-- 		WHERE hg.taskid = task_id
+-- 	));
+-- END;
+-- $$ LANGUAGE plpgsql;
 
 -- Get buildings part of one or more tasks
 DROP FUNCTION IF EXISTS get_buildings_from_tasks;
 CREATE FUNCTION get_buildings_from_tasks(project_id INT, task_ids INT[])
 RETURNS TABLE(osm_id INTEGER, geom GEOMETRY) AS $$
-DECLARE
-    utm_epsg INTEGER;
 BEGIN
-    -- Determine the SRID of the original grids in UTM
-    SELECT ST_SRID((SELECT ggiu.geom
-                    FROM get_grids_in_utm(get_buildings_from_tasks.project_id) ggiu
-                    LIMIT 1))
-    INTO utm_epsg;
-
-    RETURN QUERY
-    SELECT b.osm_id, ST_Transform(b.geom, utm_epsg)
-    FROM osm_buildings b
-    WHERE b.project_id = get_buildings_from_tasks.project_id
-    AND ST_Intersects(b.geom,(
-        SELECT ST_Union(hg.geom) AS geom
-        FROM get_grids(get_buildings_from_tasks.project_id) hg
-        WHERE hg.taskid = ANY(task_ids)
-    ));
+	RETURN QUERY
+	SELECT b.osm_id, b.geom
+	FROM buildings_utm b
+	WHERE b.project_id = get_buildings_from_tasks.project_id
+	AND EXISTS (
+		SELECT 1
+		FROM get_grids_in_utm(get_buildings_from_tasks.project_id) hg
+		WHERE hg.taskid = ANY(get_buildings_from_tasks.task_ids)
+		AND ST_Intersects(b.geom, hg.geom)
+	);
 END;
-$$ LANGUAGE plpgsql;
 
 -- Returns task ids of the adjacent tasks
 DROP FUNCTION IF EXISTS get_adjacent_tasks;
 CREATE FUNCTION get_adjacent_tasks(project_id INT, task_id INT)
-RETURNS TABLE(taskid INT) AS $$
+RETURNS TABLE(gid INTEGER, taskid INTEGER, geom GEOMETRY) AS $$
 BEGIN
 	RETURN QUERY
-	SELECT g.taskid
+	SELECT g.gid, g.taskid, g.geom
 	FROM get_grids(project_id) g
 	WHERE ST_Touches(
 		(SELECT hg.geom
@@ -379,8 +363,7 @@ BEGIN
 		),
 		g.geom
 	);
-END;
-$$ LANGUAGE plpgsql;
+END $$ LANGUAGE plpgsql;
 
 -- Divides a grid cell into subpolygons with a target area, with n being the number of points created for the random polygons and m being the target area percentage
 DROP FUNCTION IF EXISTS divide_polygon;
@@ -502,20 +485,4 @@ BEGIN
             m => percentage_covered
         ) AS subpolygon
     ) AS subpolygon_lateral;
-END $$ LANGUAGE plpgsql;
-
-DROP FUNCTION IF EXISTS get_surrounding_grids;
-CREATE FUNCTION get_surrounding_grids(project_id INT, task_id INT)
-RETURNS TABLE(gid INTEGER, taskid INTEGER, geom GEOMETRY) AS $$
-BEGIN
-	RETURN QUERY
-	SELECT g.gid, g.taskid, g.geom
-	FROM get_grids(project_id) g
-	WHERE ST_Touches(
-		(SELECT hg.geom
-		 FROM get_grids(project_id) hg
-		 WHERE hg.taskid = task_id
-		),
-		g.geom
-	);
 END $$ LANGUAGE plpgsql;

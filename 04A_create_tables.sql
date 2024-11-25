@@ -50,27 +50,27 @@ CREATE TABLE IF NOT EXISTS buildings_utm (
     project_id INT
 );
 
-CREATE TABLE IF NOT EXISTS geometry_consistency (
-    project_id INT,
-    task_id INT,
-    average_vertices_original FLOAT,
-    average_vertices_simplified FLOAT,
-    average_simplified_area_covered_from_original FLOAT,
-    number_of_buildings INT,
-    task_area FLOAT,
-    tolerance_used FLOAT,
-    PRIMARY KEY (project_id, task_id, tolerance_used)
-);
+-- CREATE TABLE IF NOT EXISTS geometry_consistency (
+--     project_id INT,
+--     task_id INT,
+--     average_vertices_original FLOAT,
+--     average_vertices_simplified FLOAT,
+--     average_simplified_area_covered_from_original FLOAT,
+--     number_of_buildings INT,
+--     task_area FLOAT,
+--     tolerance_used FLOAT,
+--     PRIMARY KEY (project_id, task_id, tolerance_used)
+-- );
 
-CREATE TABLE IF NOT EXISTS geometry_consistency_adjacent (
-    project_id INT,
-    task_id INT,
-    neighbouring_average_vertices_original FLOAT,
-    neighbouring_average_vertices_simplified FLOAT,
-    neighbouring_average_simplified_area_covered_from_original FLOAT,
-    neighbouring_number_of_buildings INT,
-    number_of_neighbouring_tasks INT,
-    neighbouring_tasks_area FLOAT,
-    tolerance_used FLOAT,
-    PRIMARY KEY (project_id, task_id, tolerance_used)
-);
+-- CREATE TABLE IF NOT EXISTS geometry_consistency_adjacent (
+--     project_id INT,
+--     task_id INT,
+--     neighbouring_average_vertices_original FLOAT,
+--     neighbouring_average_vertices_simplified FLOAT,
+--     neighbouring_average_simplified_area_covered_from_original FLOAT,
+--     neighbouring_number_of_buildings INT,
+--     number_of_neighbouring_tasks INT,
+--     neighbouring_tasks_area FLOAT,
+--     tolerance_used FLOAT,
+--     PRIMARY KEY (project_id, task_id, tolerance_used)
+-- );
