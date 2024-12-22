@@ -41,7 +41,7 @@ END $$ LANGUAGE plpgsql;
 -- Generates mockup grids
 DROP FUNCTION IF EXISTS generate_grid;
 CREATE FUNCTION generate_grid(input_geom geometry, x_width DOUBLE PRECISION, y_height DOUBLE PRECISION)
-RETURNS TABLE (id INT, geom geometry(POLYGON, 4326)) AS $$
+RETURNS TABLE (id INT, geom geometry(POLYGON)) AS $$
 DECLARE
 	minx DOUBLE PRECISION;
 	miny DOUBLE PRECISION;
@@ -51,6 +51,7 @@ DECLARE
 	y DOUBLE PRECISION;
 	grid_id integer := 0;
 	grid_cell geometry;
+	srid integer;
 BEGIN
 	-- Get the bounding box of the input geometry
 	SELECT
@@ -63,6 +64,8 @@ BEGIN
     	miny,
     	maxx,
     	maxy;
+
+	SELECT ST_SRID(input_geom) INTO srid;
 
 	-- Generate the grid cells and return them
 	x := minx;
@@ -79,7 +82,7 @@ BEGIN
                                 	ST_Point(x, y + y_height),
                                 	ST_Point(x, y)
                             	])
-                        	), 4326
+                        	), srid
                     	);
         	geom := ST_Intersection(grid_cell, input_geom);
         	IF NOT ST_IsEmpty(geom) THEN
@@ -95,7 +98,10 @@ END $$ LANGUAGE plpgsql;
 -- Generates mockup grid with project_id
 DROP FUNCTION IF EXISTS generate_mockup_grid;
 CREATE FUNCTION generate_mockup_grid(project_id INT)
-RETURNS TABLE (id INT, geom geometry(POLYGON, 4326)) AS $$
+RETURNS TABLE (id INT, geom geometry(POLYGON)) AS $$
+DECLARE
+	x_width DOUBLE PRECISION := 0.01;
+	y_height DOUBLE PRECISION := 0.01;
 BEGIN
 	RETURN QUERY
 	SELECT 0 AS id, geng.geom
@@ -110,8 +116,8 @@ BEGIN
 				FROM get_grids(project_id, FALSE) AS gg
 			) AS vg
 		),
-		0.01,
-		0.01
+		x_width,
+		y_height
 	) AS geng;
 END;
 $$ LANGUAGE plpgsql;
