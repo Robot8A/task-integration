@@ -1,3 +1,4 @@
+-- Attempts to fix the given polygon geometry
 DROP FUNCTION IF EXISTS fix_geometry;
 CREATE FUNCTION fix_geometry(input_geom GEOMETRY)
 RETURNS GEOMETRY AS $$
@@ -11,7 +12,7 @@ BEGIN
 		RAISE NOTICE 'Input geometry is invalid, fixing geometry';
 		valid_geom := ST_MakeValid(input_geom);
 
-		FOR i IN 1..5 LOOP
+		FOR i IN 1..10 LOOP
 			IF GeometryType(valid_geom) IN ('POLYGON', 'MULTIPOLYGON') THEN
 				EXIT;
 			ELSIF GeometryType(valid_geom) = 'GEOMETRYCOLLECTION' THEN
@@ -33,6 +34,7 @@ BEGIN
 	IF GeometryType(valid_geom) IN ('POLYGON', 'MULTIPOLYGON') THEN
 		RETURN valid_geom;
 	END IF;
+	RAISE NOTICE 'Returning NULL. Failed to fix geometry: %', ST_AsText(input_geom);
 	RETURN NULL;
 END $$ LANGUAGE plpgsql;
 
