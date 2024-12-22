@@ -1,9 +1,9 @@
-CREATE INDEX ON hotosm_grids USING GIST(geom);
-CREATE INDEX ON hotosm_grids (project_id);
-CREATE INDEX ON osm_buildings USING GIST(geom);
-CREATE INDEX ON osm_buildings (project_id);
-CREATE INDEX ON osm_roads USING GIST(geom);
-CREATE INDEX ON osm_roads (project_id);
+-- CREATE INDEX ON hotosm_grids USING GIST(geom);
+-- CREATE INDEX ON hotosm_grids (project_id);
+-- CREATE INDEX ON osm_buildings USING GIST(geom);
+-- CREATE INDEX ON osm_buildings (project_id);
+-- CREATE INDEX ON osm_roads USING GIST(geom);
+-- CREATE INDEX ON osm_roads (project_id);
 CREATE INDEX ON projects (id);
 ---CREATE INDEX ON mockup_grids USING GIST(geom);
 ---CREATE INDEX ON mockup_grids (project_id);

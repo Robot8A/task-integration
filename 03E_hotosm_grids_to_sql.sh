@@ -9,7 +9,7 @@ echo "********************************"
 PROJECT_FILE="project_ids.txt"
 project_ids=$(cat "$PROJECT_FILE")
 num_project_ids=$(echo "$project_ids" | wc -w)
-table_name="hotosm_grids"
+table_name="grids_pre_partition"
 current_project=1
 
 export PGPASSWORD=postgres
@@ -53,3 +53,5 @@ for project_id in $project_ids; do
 
     current_project=$((current_project + 1))
 done
+
+return 0

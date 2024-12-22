@@ -27,7 +27,7 @@ RETURNS TABLE(
 DECLARE
     vertices_sum FLOAT;
 BEGIN
-    SELECT SUM(ST_NPoints(geom)) INTO vertices_sum
+    SELECT SUM(ST_NPoints(geom)) INTO vertices_sum, COUNT(*) INTO buildings_count
     FROM get_buildings_from_tasks(project_id, task_ids);
 
     SELECT COUNT(*) INTO buildings_count
@@ -38,54 +38,55 @@ BEGIN
     RETURN QUERY SELECT avg_vertices, buildings_count;
 END $$ LANGUAGE plpgsql;
 
--- DROP FUNCTION IF EXISTS calculate_gearys_c_between_tasks;
--- CREATE FUNCTION calculate_gearys_c_between_tasks(project_id INT, task_id INT, adjacent_task_ids INT[])
--- RETURNS TABLE(
---     gearys_c FLOAT,
---     buildings_count INT,
---     avg_vertices FLOAT
--- ) AS $$
--- DECLARE
---     vertices_sum FLOAT;
--- BEGIN
---     -- Calculate average vertices per building for the main task
---     SELECT avg_vertices, buildings_count
---     INTO avg_vertices, buildings_count
---     FROM calculate_avg_vertices_per_building_from_tasks(project_id, ARRAY[task_id]);
+DROP FUNCTION IF EXISTS calculate_gearys_c_for_project;
+CREATE FUNCTION calculate_gearys_c_for_project(project_id INT)
+RETURNS TABLE(
+    task_id INT,
+    gearys_c FLOAT
+) AS $$
+DECLARE
+    task RECORD;
+    adjacent_task RECORD;
+    numerator_sum FLOAT := 0;
+    denominator_sum FLOAT := 0;
+    mean_vertices FLOAT;
+    n INT;
+BEGIN
+    -- Calculate the mean of avg_vertices for the project
+    SELECT AVG(avg_vertices) INTO mean_vertices
+    FROM avg_vertices_per_building_per_task
+    WHERE project_id = calculate_gearys_c_for_project.project_id;
 
---     -- Calculate average vertices per building for the adjacent tasks
---     SELECT avg_vertices, buildings_count
---     INTO avg_vertices, buildings_count
---     FROM calculate_avg_vertices_per_building_from_tasks(project_id, get_adjacent_tasks(project_id, task_id));
+    -- Calculate the number of tasks in the project
+    SELECT COUNT(*) INTO n
+    FROM avg_vertices_per_building_per_task
+    WHERE project_id = calculate_gearys_c_for_project.project_id;
 
---     -- Calculate Geary's C
---     ...
-    
+    FOR task IN
+        SELECT taskid, avg_vertices
+        FROM avg_vertices_per_building_per_task
+        WHERE project_id = calculate_gearys_c_for_project.project_id
+    LOOP
+        numerator_sum := 0;
+        denominator_sum := 0;
 
--- DROP FUNCTION IF EXISTS calculate_gearys_c_from_task;
--- CREATE FUNCTION calculate_gearys_c_from_task(project_id INT, task_id INT)
--- RETURNS TABLE(
---     gearys_c FLOAT,
---     buildings_count INT,
---     avg_vertices FLOAT
--- ) AS $$
--- BEGIN
---     -- Reuse calculate_avg_vertices_per_building_from_task function
---     SELECT avg_vertices, buildings_count
---     INTO avg_vertices, buildings_count
---     FROM calculate_avg_vertices_per_building_from_task(project_id, task_id);
+        FOR adjacent_task IN
+            SELECT adjacent_task_id, avg_vertices
+            FROM get_adjacent_tasks(calculate_gearys_c_for_project.project_id, task.taskid) adj
+            JOIN avg_vertices_per_building_per_task av
+            ON adj.adjacent_task_id = av.taskid
+        LOOP
+            numerator_sum := numerator_sum + (COALESCE(task.avg_vertices, 0) - COALESCE(adjacent_task.avg_vertices, 0))^2;
+            denominator_sum := denominator_sum + (COALESCE(task.avg_vertices, 0) - mean_vertices)^2 + (COALESCE(adjacent_task.avg_vertices, 0) - mean_vertices)^2;
+        END LOOP;
 
---     SELECT SUM(
---         ST_NPoints(b1.geom) * ST_NPoints(b2.geom) * ST_Distance(b1.geom, b2.geom)
---     ) INTO gearys_c
---     FROM get_buildings_from_task(project_id, task_id) b1
---     JOIN get_buildings_from_task(project_id, task_id) b2
---     ON b1.osm_id < b2.osm_id;
-
---     gearys_c := gearys_c / (2 * avg_vertices * avg_vertices * buildings_count * (buildings_count - 1));
-
---     RETURN QUERY SELECT gearys_c, buildings_count, avg_vertices;
--- END $$ LANGUAGE plpgsql;
+        IF denominator_sum != 0 THEN
+            RETURN QUERY SELECT task.taskid, (numerator_sum / denominator_sum) * (n / 2);
+        ELSE
+            RETURN QUERY SELECT task.taskid, NULL::FLOAT;
+        END IF;
+    END LOOP;
+END $$ LANGUAGE plpgsql; 
 
 -- Returns simplified buildings part of a task
 -- DROP FUNCTION IF EXISTS get_simplified_buildings_from_task;

@@ -1,3 +1,41 @@
+DROP FUNCTION IF EXISTS fix_geometry;
+CREATE FUNCTION fix_geometry(input_geom GEOMETRY)
+RETURNS GEOMETRY AS $$
+DECLARE
+	valid_geom GEOMETRY;
+BEGIN
+	-- Check if the input geometry is valid, otherwise fix it
+	IF ST_IsValid(input_geom) THEN
+			valid_geom := input_geom;
+	ELSE
+		RAISE NOTICE 'Input geometry is invalid, fixing geometry';
+		valid_geom := ST_MakeValid(input_geom);
+
+		FOR i IN 1..5 LOOP
+			IF GeometryType(valid_geom) IN ('POLYGON', 'MULTIPOLYGON') THEN
+				EXIT;
+			ELSIF GeometryType(valid_geom) = 'GEOMETRYCOLLECTION' THEN
+				-- Extract only the Polygon or MultiPolygon geometries from the collection
+				valid_geom := (
+					SELECT ST_Collect(valid_geoms.geom) -- Re-collect into a single geometry
+					FROM (
+						SELECT dumped_geom.geom
+						FROM ST_Dump(valid_geom) AS dumped_geom
+						WHERE GeometryType(dumped_geom.geom) IN ('POLYGON', 'MULTIPOLYGON')
+					) AS valid_geoms
+				);
+			ELSIF GeometryType(valid_geom) = 'MULTILINESTRING' THEN
+				-- Convert MultiLineString to Polygon or Multipolygon
+				valid_geom := ST_Polygonize(valid_geom);
+			END IF;
+		END LOOP;
+	END IF;
+	IF GeometryType(valid_geom) IN ('POLYGON', 'MULTIPOLYGON') THEN
+		RETURN valid_geom;
+	END IF;
+	RETURN NULL;
+END $$ LANGUAGE plpgsql;
+
 -- Generates mockup grids
 DROP FUNCTION IF EXISTS generate_grid;
 CREATE FUNCTION generate_grid(input_geom geometry, x_width DOUBLE PRECISION, y_height DOUBLE PRECISION)
@@ -79,17 +117,17 @@ $$ LANGUAGE plpgsql;
 -- Returns grids part of a project
 DROP FUNCTION IF EXISTS get_grids;
 CREATE FUNCTION get_grids(project_id INT, do_mockup_grid BOOLEAN DEFAULT FALSE)
-RETURNS TABLE(gid INTEGER, taskid INTEGER, geom GEOMETRY) AS $$
+RETURNS TABLE(taskid INTEGER, geom GEOMETRY) AS $$
 BEGIN
 	IF do_mockup_grid THEN
 		RETURN QUERY
-		SELECT 0 AS gid, 0 AS taskid, mg.geom
+		SELECT 0 AS taskid, mg.geom
 		FROM mockup_grids AS mg
 		WHERE mg.project_id = get_grids.project_id;
 	ELSE
 		RETURN QUERY
-		SELECT g.gid, g.taskid, g.geom
-		FROM hotosm_grids g
+		SELECT g.taskid, g.geom
+		FROM grids g
 		WHERE g.project_id = get_grids.project_id;
 	END IF;
 END;
@@ -127,35 +165,23 @@ BEGIN
 				CASE 
 					WHEN ST_IsValid(geom) THEN geom 
 					ELSE ST_MakeValid(geom) 
-				END AS geom, gid
+				END AS geom, taskid
 			FROM get_grids(project_id)
 		) g1, (
 			SELECT 
 				CASE 
 					WHEN ST_IsValid(geom) THEN geom 
 					ELSE ST_MakeValid(geom) 
-				END AS geom, gid
+				END AS geom, taskid
 			FROM get_grids(project_id)
 		) g2
-		WHERE g1.gid <> g2.gid AND ST_Overlaps(g1.geom, g2.geom)
+		WHERE g1.taskid <> g2.taskid AND ST_Overlaps(g1.geom, g2.geom)
 	) AS overlapping_areas;
 
 	-- Return true if all geometries are in a single cluster and there are no overlaps, otherwise false
 	RETURN num_clusters = 1 AND overlapping_count = 0;
 END;
 $$ LANGUAGE plpgsql;
-
--- Returns buildings part of a project
---DROP FUNCTION IF EXISTS get_buildings;
---CREATE FUNCTION get_buildings(project_id INT)
---RETURNS TABLE(osm_id INTEGER, geom GEOMETRY) AS $$
---BEGIN
---	RETURN QUERY
---	SELECT b.osm_id, b.geom
---	FROM osm_buildings b
---	WHERE b.project_id = get_buildings.project_id;
---END;
---$$ LANGUAGE plpgsql;
 
 -- Returns roads part of a project
 DROP FUNCTION IF EXISTS get_roads;
@@ -164,7 +190,7 @@ RETURNS TABLE(osm_id INTEGER, geom GEOMETRY) AS $$
 BEGIN
 	RETURN QUERY
 	SELECT r.osm_id, r.geom
-	FROM osm_roads r
+	FROM roads r
 	WHERE r.project_id = get_roads.project_id;
 END;
 $$ LANGUAGE plpgsql;
@@ -204,6 +230,12 @@ RETURNS INT AS $$
 DECLARE
 	utm_epsg INTEGER;
 BEGIN
+	SELECT uz.utm_epsg INTO utm_epsg FROM utm_zones uz WHERE uz.project_id = get_utm_zone.project_id;
+
+	IF utm_epsg IS NOT NULL THEN
+		RETURN utm_epsg;
+	END IF;
+
 	-- Calculate the UTM EPSG code
 	SELECT calculate_utm_zone(union_gg.geom)::INTEGER INTO utm_epsg
 	FROM (
@@ -212,6 +244,8 @@ BEGIN
 	) AS union_gg
 	LIMIT 1;
 
+	INSERT INTO utm_zones (utm_epsg, project_id) VALUES (utm_epsg, project_id);
+
 	RETURN utm_epsg;
 END;
 $$ LANGUAGE plpgsql;
@@ -219,17 +253,17 @@ $$ LANGUAGE plpgsql;
 -- Returns grids in UTM projection
 DROP FUNCTION IF EXISTS get_grids_in_utm;
 CREATE FUNCTION get_grids_in_utm(project_id INT, do_mockup_grid BOOLEAN DEFAULT FALSE)
-RETURNS TABLE(gid INTEGER, taskid INTEGER, geom GEOMETRY) AS $$
-DECLARE
-	utm_epsg INTEGER;
+RETURNS TABLE(taskid INTEGER, geom GEOMETRY) AS $$
 BEGIN
-	-- Calculate the UTM EPSG code
-	SELECT get_utm_zone(project_id) INTO utm_epsg;
-
-	-- Return transformed geometries using the calculated UTM EPSG code
-	RETURN QUERY
-	SELECT gg.gid, gg.taskid, ST_Transform(CASE WHEN ST_IsValid(gg.geom) THEN gg.geom ELSE ST_MakeValid(gg.geom) END, utm_epsg) AS geom
-	FROM get_grids(project_id, do_mockup_grid) AS gg;
+	IF do_mockup_grid THEN
+		RETURN QUERY
+		SELECT mpg.taskid, mpg.geom FROM mockup_polygon_grids AS mpg
+		WHERE mpg.project_id = get_grids_in_utm.project_id;
+	ELSE
+		RETURN QUERY
+		SELECT g.taskid, g.geom_utm FROM grids g
+		WHERE g.project_id = get_grids_in_utm.project_id;
+	END IF;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -283,7 +317,7 @@ BEGIN
 
 		RETURN QUERY
 		WITH utm_grids AS (
-			SELECT ggiu.gid, ggiu.taskid, ggiu.geom
+			SELECT 0 as gid, ggiu.taskid, ggiu.geom
 			FROM get_grids_in_utm(project_id, FALSE) AS ggiu
 		),
 		mockup_poly_grids AS (
@@ -305,7 +339,7 @@ BEGIN
 
 		RETURN QUERY
 		WITH utm_grids AS (
-			SELECT ggiu.gid, ggiu.taskid, ggiu.geom
+			SELECT 0 as gid, ggiu.taskid, ggiu.geom
 			FROM get_grids_in_utm(project_id, do_mockup_grid) AS ggiu
 		)
 		SELECT utm_grids.gid, utm_grids.taskid, shrink_geometry(utm_grids.geom, shrink_distance, is_percentage) AS geom
@@ -423,41 +457,43 @@ BEGIN
     -- Initialize an array of indices for shuffling
     SELECT array(SELECT generate_series(1, array_length(voronoi_geoms, 1))) INTO voronoi_ids;
 
-    -- Shuffle the indices
-    FOR i IN array_lower(voronoi_ids, 1) .. array_upper(voronoi_ids, 1) LOOP
-        j := floor(random() * (array_length(voronoi_ids, 1) - i + 1) + i)::integer;
-        temp_id := voronoi_ids[i];
-        voronoi_ids[i] := voronoi_ids[j];
-        voronoi_ids[j] := temp_id;
-    END LOOP;
+	IF voronoi_ids IS NOT NULL AND array_length(voronoi_ids, 1) > 0 THEN
+	    FOR i IN array_lower(voronoi_ids, 1) .. array_upper(voronoi_ids, 1) LOOP
+			j := floor(random() * (array_length(voronoi_ids, 1) - i + 1) + i)::integer;
+			temp_id := voronoi_ids[i];
+			voronoi_ids[i] := voronoi_ids[j];
+			voronoi_ids[j] := temp_id;
+		END LOOP;
 
-    -- Step 4: Iterate through shuffled Voronoi polygons
-    i := 1;
-    WHILE i <= array_length(voronoi_ids, 1) AND accumulated_area < target_total_area LOOP
-        selected_geom := voronoi_geoms[voronoi_ids[i]];
-        accumulated_area := accumulated_area + ST_Area(selected_geom);
+		-- Step 4: Iterate through shuffled Voronoi polygons
+		i := 1;
+		WHILE i <= array_length(voronoi_ids, 1) AND accumulated_area < target_total_area LOOP
+			selected_geom := voronoi_geoms[voronoi_ids[i]];
+			accumulated_area := accumulated_area + ST_Area(selected_geom);
 
-        -- If the accumulated area exceeds the target, clip the last polygon to fit the exact area
-        IF accumulated_area > target_total_area THEN
-			selected_geom_old := selected_geom;
-            selected_geom := ST_Dilate(selected_geom_old, (target_total_area - (accumulated_area - ST_Area(selected_geom_old))) / ST_Area(selected_geom_old));
+			-- If the accumulated area exceeds the target, clip the last polygon to fit the exact area
+			IF accumulated_area > target_total_area THEN
+				selected_geom_old := selected_geom;
+				selected_geom := ST_Dilate(selected_geom_old, (target_total_area - (accumulated_area - ST_Area(selected_geom_old))) / ST_Area(selected_geom_old));
 
-			-- If ST_Dilate fails, return the original geometry
-			IF selected_geom IS NULL THEN
-				selected_geom := selected_geom_old;
-				RAISE NOTICE 'Failed to dilate geometry, returning original geometry';
+				-- If ST_Dilate fails, return the original geometry
+				IF selected_geom IS NULL THEN
+					selected_geom := selected_geom_old;
+					RAISE NOTICE 'Failed to dilate geometry, returning original geometry';
+				END IF;
+
+				accumulated_area := target_total_area;
 			END IF;
 
-            accumulated_area := target_total_area;
-        END IF;
+			-- Return the selected geometry as a subpolygon
+			geom := selected_geom;
+			RETURN NEXT;
+	
 
-        -- Return the selected geometry as a subpolygon
-        geom := selected_geom;
-        RETURN NEXT;
-
-        -- Increment index
-        i := i + 1;
-    END LOOP;
+			-- Increment index
+			i := i + 1;
+		END LOOP;
+	END IF;
 
 END $$ LANGUAGE plpgsql;
 

@@ -121,7 +121,7 @@ BEGIN
 
 	-- Save total number of nonconnecting nodes
 	WITH grids AS (
-        	SELECT ggiu.gid, ggiu.geom
+        	SELECT ggiu.geom
         	FROM get_grids_in_utm(project_id) AS ggiu
 	)
 	SELECT COUNT(*) INTO total_number_of_nonconnecting_nodes

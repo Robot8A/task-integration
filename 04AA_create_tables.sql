@@ -3,18 +3,18 @@
 ---    geom geometry
 ---);
 
-CREATE TABLE IF NOT EXISTS mockup_polygon_grids (
-    project_id INT,
-    taskid INT,
-    geom geometry,
-    percentage_covered DOUBLE PRECISION
-);
+-- CREATE TABLE IF NOT EXISTS mockup_polygon_grids (
+--     project_id INT,
+--     taskid INT,
+--     geom geometry,
+--     percentage_covered DOUBLE PRECISION
+-- );
 
-CREATE TABLE IF NOT EXISTS nonconnecting_nodes (
-    project_id INT,
-    geom geometry,
-    point_type TEXT
-);
+-- CREATE TABLE IF NOT EXISTS nonconnecting_nodes (
+--     project_id INT,
+--     geom geometry,
+--     point_type TEXT
+-- );
 
 CREATE TABLE IF NOT EXISTS continuation (
     project_id INT,
@@ -44,11 +44,11 @@ CREATE TABLE IF NOT EXISTS duplication (
     PRIMARY KEY (project_id, grid_type, shrink_distance, shrink_type)
 );
 
-CREATE TABLE IF NOT EXISTS buildings_utm (
-    osm_id INT,
-    geom GEOMETRY,
-    project_id INT
-);
+-- CREATE TABLE IF NOT EXISTS buildings_utm (
+--     osm_id INT,
+--     geom GEOMETRY,
+--     project_id INT
+-- );
 
 -- CREATE TABLE IF NOT EXISTS geometry_consistency (
 --     project_id INT,

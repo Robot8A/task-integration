@@ -9,7 +9,7 @@ echo "********************************"
 PROJECT_FILE="project_ids.txt"
 project_ids=$(cat "$PROJECT_FILE")
 num_project_ids=$(echo "$project_ids" | wc -w)
-table_name="osm_roads"
+table_name="roads_pre_partition"
 current_project=1
 project_id_column_created=false
 
@@ -73,3 +73,5 @@ for project_id in $project_ids; do
 
     current_project=$((current_project + 1))
 done
+
+return 0

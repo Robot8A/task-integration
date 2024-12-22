@@ -1,30 +1,41 @@
 -- CALCULATE NON-CONNECTING NODES
 -- Run this part multiple times until it alls gets done
-DO $$
-DECLARE
-    current_project_id INT;
-    project_ids INT[];
-BEGIN
-    -- Get project IDs into an array
-    SELECT array_agg(ids) INTO project_ids
-    FROM (
-        SELECT proj_id
-        FROM selected_projects
-        WHERE typename = 'ROADS'
-        AND NOT EXISTS (
-            SELECT nn.project_id
-            FROM nonconnecting_nodes nn
-            WHERE nn.project_id = proj_id
-            LIMIT 1
-          )
-        --- LIMIT 100
-    ) subquery;
+-- DO $$
+-- DECLARE
+--     current_project_id INT;
+--     project_ids INT[];
+-- BEGIN
+--     -- Get project IDs into an array
+--     SELECT array_agg(ids) INTO project_ids
+--     FROM (
+--         SELECT proj_id
+--         FROM selected_projects
+--         WHERE typename = 'ROADS'
+--         AND NOT EXISTS (
+--             SELECT nn.project_id
+--             FROM nonconnecting_nodes nn
+--             WHERE nn.project_id = proj_id
+--             LIMIT 1
+--           )
+--         --- LIMIT 100
+--     ) subquery;
     
-    -- Iterate over each project_id
-    FOREACH current_project_id IN ARRAY project_ids LOOP
-        RAISE NOTICE 'TIME % | Project ID: %', clock_timestamp(), current_project_id;
-        INSERT INTO nonconnecting_nodes (project_id, geom, point_type)
-        SELECT current_project_id AS project_id, gncsen.node AS geom, gncsen.point_type
-        FROM get_nonconnecting_start_end_nodes_in_utm(current_project_id) AS gncsen;
-    END LOOP;
-END $$;
+--     -- Iterate over each project_id
+--     FOREACH current_project_id IN ARRAY project_ids LOOP
+--         RAISE NOTICE 'TIME % | Project ID: %', clock_timestamp(), current_project_id;
+--         INSERT INTO nonconnecting_nodes (project_id, geom, point_type)
+--         SELECT current_project_id AS project_id, gncsen.node AS geom, gncsen.point_type
+--         FROM get_nonconnecting_start_end_nodes_in_utm(current_project_id) AS gncsen;
+--     END LOOP;
+-- END $$;
+
+CREATE MATERIALIZED VIEW nonconnecting_nodes
+WITH (parallel_workers = 8) AS
+WITH project_ids AS (
+    SELECT proj_id
+    FROM selected_projects
+    WHERE typename = 'ROADS'
+)
+SELECT project_ids.proj_id AS project_id, gncsen.node AS geom, gncsen.point_type
+FROM project_ids
+JOIN LATERAL get_nonconnecting_start_end_nodes_in_utm(project_ids.proj_id) AS gncsen ON true
