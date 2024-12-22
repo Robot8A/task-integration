@@ -468,7 +468,13 @@ BEGIN
 			-- If the accumulated area exceeds the target, clip the last polygon to fit the exact area
 			IF accumulated_area > target_total_area THEN
 				selected_geom_old := selected_geom;
-				selected_geom := ST_Dilate(selected_geom_old, (target_total_area - (accumulated_area - ST_Area(selected_geom_old))) / ST_Area(selected_geom_old));
+				selected_geom := ST_Dilate(
+					selected_geom_old,
+					(target_total_area - (accumulated_area - ST_Area(selected_geom_old))) / ST_Area(selected_geom_old),
+					tol => 0.001,
+					guess => 0.01,
+					safety => 10000
+					);
 
 				-- If ST_Dilate fails, return the original geometry
 				IF selected_geom IS NULL THEN
