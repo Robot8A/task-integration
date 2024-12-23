@@ -406,6 +406,11 @@ DECLARE
     j INTEGER;
     temp_geom GEOMETRY;
     temp_id INTEGER;
+	dilate_tolerance DOUBLE PRECISION;
+	dilate_tolerance_factor_of_area DOUBLE PRECISION := 100000;
+	dilate_guess DOUBLE PRECISION;
+	dilate_guess_factor_of_area DOUBLE PRECISION := 100000;
+	dilate_safety INTEGER := 1000000000;
 BEGIN
 
 	-- Check if the input geometry is valid, otherwise fix it
@@ -434,6 +439,10 @@ BEGIN
 		RAISE NOTICE 'Input geometry has zero area';
 		RETURN;
 	END IF;
+
+	-- Set tolerance and guess for ST_Dilate
+	dilate_tolerance := total_area / dilate_tolerance_factor_of_area;
+	dilate_guess := total_area / dilate_guess_factor_of_area;
 
     -- Step 2: Determine the target total area for all subpolygons combined
     target_total_area := (m / 100.0) * total_area;
@@ -471,9 +480,9 @@ BEGIN
 				selected_geom := ST_Dilate(
 					selected_geom_old,
 					(target_total_area - (accumulated_area - ST_Area(selected_geom_old))) / ST_Area(selected_geom_old),
-					tol => 0.001,
-					guess => 0.01,
-					safety => 10000
+					tol => dilate_tolerance,
+					guess => dilate_guess,
+					safety => dilate_safety
 					);
 
 				-- If ST_Dilate fails, return the original geometry
@@ -494,7 +503,6 @@ BEGIN
 			i := i + 1;
 		END LOOP;
 	END IF;
-
 END $$ LANGUAGE plpgsql;
 
 -- Generates mockup polygon grid with project_id
