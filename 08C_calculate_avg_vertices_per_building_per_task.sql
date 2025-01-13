@@ -1,5 +1,4 @@
-CREATE MATERIALIZED VIEW avg_vertices_per_building_per_task
-WITH (parallel_workers = 8) AS
+CREATE MATERIALIZED VIEW avg_vertices_per_building_per_task AS
 WITH project_ids AS (
     SELECT proj_id
     FROM selected_projects
