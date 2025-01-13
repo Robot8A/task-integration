@@ -1,5 +1,4 @@
 CREATE MATERIALIZED VIEW selected_projects
-WITH (parallel_workers = 8) AS
 SELECT proj_id, typename
 FROM public.mapping_types
 WHERE (typename = 'ROADS' OR typename = 'BUILDINGS')

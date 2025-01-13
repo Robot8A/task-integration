@@ -36,25 +36,30 @@ BEGIN
     END LOOP;
 END $$;
 
--- CREATE TEMP TABLE IF NOT EXISTS percentages_covered(percentage_covered DOUBLE PRECISION);
+-- POPULATE MOCKUP POLYGON GRIDS
+-- CREATE TABLE IF NOT EXISTS percentages_covered(percentage_covered DOUBLE PRECISION);
 -- INSERT INTO percentages_covered (percentage_covered) VALUES (5.0), (10.0), (15.0);
 
--- CREATE MATERIALIZED VIEW test_improved_mockup_polygon_grids
--- WITH (parallel_workers = 8) AS
--- WITH project_ids AS (
---     SELECT proj_id
---     FROM selected_projects
---     LIMIT 1
--- ), percentages AS (
---     SELECT DISTINCT percentage_covered
---     FROM percentages_covered
--- ), projects_percentages AS (
---     SELECT pi.proj_id, pc.percentage_covered
---     FROM project_ids pi
---     JOIN percentages pc ON true
--- )
+-- CREATE TEMP TABLE temp_project_ids AS
+-- SELECT proj_id
+-- FROM selected_projects;
+
+-- CREATE TEMP TABLE temp_percentages AS
+-- SELECT DISTINCT percentage_covered
+-- FROM percentages_covered;
+
+-- CREATE TABLE projects_percentages AS
+-- SELECT pi.proj_id, pc.percentage_covered
+-- FROM temp_project_ids pi
+-- CROSS JOIN temp_percentages pc;
+
+-- DROP TABLE IF EXISTS temp_project_ids;
+-- DROP TABLE IF EXISTS temp_percentages;
+
+-- INSERT INTO mockup_polygon_grids (project_id, taskid, geom, percentage_covered)
 -- SELECT pp.proj_id AS project_id, gmpg.taskid, gmpg.geom, pp.percentage_covered AS perc_covered
 -- FROM projects_percentages AS pp
 -- JOIN LATERAL generate_mockup_polygon_grid(pp.proj_id, pp.percentage_covered) AS gmpg ON true;
 
 -- DROP TABLE IF EXISTS percentages_covered;
+-- DROP TABLE IF EXISTS projects_percentages;

@@ -29,7 +29,7 @@ BEGIN
 		WHERE g.project_id = get_grids_in_utm.project_id;
 	END IF;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql PARALLEL SAFE;
 
 
 -- Returns shrunk grids in UTM projection
@@ -75,7 +75,7 @@ BEGIN
 		FROM utm_grids;
 	END IF;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql PARALLEL SAFE;
 
 -- Returns roads part of a project
 DROP FUNCTION IF EXISTS get_roads;
@@ -87,7 +87,7 @@ BEGIN
 	FROM roads r
 	WHERE r.project_id = get_roads.project_id;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql PARALLEL SAFE;
 
 -- Get buildings part of one or more tasks
 DROP FUNCTION IF EXISTS get_buildings_from_tasks;
@@ -104,7 +104,7 @@ BEGIN
 		WHERE hg.taskid = ANY(get_buildings_from_tasks.task_ids)
 		AND ST_Intersects(b.geom, hg.geom)
 	);
-END $$ LANGUAGE plpgsql;
+END $$ LANGUAGE plpgsql PARALLEL SAFE;
 
 -- Returns an accurate UTM zone number for a given project
 DROP FUNCTION IF EXISTS get_utm_zone;
@@ -131,7 +131,7 @@ BEGIN
 
 	RETURN utm_epsg;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql PARALLEL SAFE;
 
 ----------------
 --- GEOMETRY ---
@@ -175,7 +175,7 @@ BEGIN
 	END IF;
 	RAISE NOTICE 'Returning NULL. Failed to fix geometry: %', ST_AsText(input_geom);
 	RETURN NULL;
-END $$ LANGUAGE plpgsql;
+END $$ LANGUAGE plpgsql PARALLEL SAFE;
 
 -- -- Generates mockup grids
 -- DROP FUNCTION IF EXISTS generate_grid;
@@ -287,7 +287,7 @@ BEGIN
 
 	RETURN epsg_number;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql PARALLEL SAFE;
 
 -- Shrinks a geometry by a given distance or percentage
 DROP FUNCTION IF EXISTS shrink_geometry;
@@ -323,7 +323,7 @@ BEGIN
 
     RETURN scaled_geom;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql PARALLEL SAFE;
 
 
 -- Returns true if all grids are fully adjacent and not overlapping
@@ -386,7 +386,7 @@ BEGIN
 	FROM adjacent_tasks adt
 	WHERE adt.project_id = get_adjacent_tasks.project_id
 	AND adt.task_id = get_adjacent_tasks.task_id;
-END $$ LANGUAGE plpgsql;
+END $$ LANGUAGE plpgsql PARALLEL SAFE;
 
 -- Divides a grid cell into subpolygons with a target area, with n being the number of points created for the random polygons and m being the target area percentage
 DROP FUNCTION IF EXISTS divide_polygon;
@@ -407,9 +407,9 @@ DECLARE
     temp_geom GEOMETRY;
     temp_id INTEGER;
 	dilate_tolerance DOUBLE PRECISION;
-	dilate_tolerance_factor_of_area DOUBLE PRECISION := 100000;
+	dilate_tolerance_factor_of_area DOUBLE PRECISION := 2000;
 	dilate_guess DOUBLE PRECISION;
-	dilate_guess_factor_of_area DOUBLE PRECISION := 100000;
+	dilate_guess_factor_of_area DOUBLE PRECISION := 5000;
 	dilate_safety INTEGER := 1000000000;
 BEGIN
 
@@ -503,7 +503,7 @@ BEGIN
 			i := i + 1;
 		END LOOP;
 	END IF;
-END $$ LANGUAGE plpgsql;
+END $$ LANGUAGE plpgsql PARALLEL SAFE;
 
 -- Generates mockup polygon grid with project_id
 DROP FUNCTION IF EXISTS generate_mockup_polygon_grid;
@@ -526,4 +526,4 @@ BEGIN
             m => percentage_covered
         ) AS subpolygon
     ) AS subpolygon_lateral;
-END $$ LANGUAGE plpgsql;
+END $$ LANGUAGE plpgsql PARALLEL SAFE;
