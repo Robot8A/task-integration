@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 """
-Author: Héctor Ochoa Ortiz
 Date: 2024-07-11
 """
 

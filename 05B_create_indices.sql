@@ -7,9 +7,9 @@
 CREATE INDEX ON projects (id);
 ---CREATE INDEX ON mockup_grids USING GIST(geom);
 ---CREATE INDEX ON mockup_grids (project_id);
-CREATE INDEX ON mockup_polygon_grids USING GIST(geom);
-CREATE INDEX ON mockup_polygon_grids (project_id);
-CREATE INDEX ON buildings_utm USING GIST(geom);
-CREATE INDEX ON buildings_utm (project_id);
-CREATE INDEX ON nonconnecting_nodes USING GIST(geom);
-CREATE INDEX ON nonconnecting_nodes (project_id);
+-- CREATE INDEX ON mockup_polygon_grids USING GIST(geom);
+-- CREATE INDEX ON mockup_polygon_grids (project_id);
+-- CREATE INDEX ON buildings_utm USING GIST(geom);
+-- CREATE INDEX ON buildings_utm (project_id);
+-- CREATE INDEX ON nonconnecting_nodes USING GIST(geom);
+-- CREATE INDEX ON nonconnecting_nodes (project_id);

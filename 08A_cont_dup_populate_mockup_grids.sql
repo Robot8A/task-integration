@@ -1,0 +1,46 @@
+-- POPULATE MOCKUP POLYGON GRIDS
+DO $$
+BEGIN
+    SET min_parallel_index_scan_size = 100;
+    SET min_parallel_table_scan_size = 100;
+    SET parallel_setup_cost = 1;
+    SET parallel_tuple_cost = 0.1;
+    SET max_parallel_workers = 10;
+    SET max_parallel_workers_per_gather = 10;
+
+    -- Get 10% of the selected projects
+	CALL raise_notice('Selecting projects');
+	DROP TABLE IF EXISTS temp_project_ids;
+	CREATE TEMP TABLE temp_project_ids AS
+	SELECT proj_id, typename
+	FROM selected_projects
+	WHERE indicator_cont_dup = 7
+	ORDER BY proj_id
+	--LIMIT (SELECT COUNT(*) * 0.0025 FROM selected_projects);
+	LIMIT 10;
+	CALL raise_notice('Projects selected');
+
+    -- Populate mockup grids
+    CALL raise_notice('Populating mockup grids');
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'mockup_grids') THEN
+        CREATE TABLE mockup_grids AS
+        SELECT g.project_id, g.taskid, ST_Intersection(g.geom_utm, (ST_SquareGrid(sqrt(ST_Area(g.geom_utm)) / 100, g.geom_utm)).geom) AS geom
+        FROM grids g
+        JOIN temp_project_ids tpi ON g.project_id = tpi.proj_id;
+    ELSE
+        INSERT INTO mockup_grids (project_id, taskid, geom)
+        SELECT g.project_id, g.taskid, ST_Intersection(g.geom_utm, (ST_SquareGrid(sqrt(ST_Area(g.geom_utm)) / 100, g.geom_utm)).geom) AS geom
+        FROM grids g
+        JOIN temp_project_ids tpi ON g.project_id = tpi.proj_id;
+    END IF;
+    CALL raise_notice('Mockup grids populated');
+
+    -- Update the selected projects to indicate that they have been processed
+	UPDATE selected_projects
+    SET indicator_cont_dup = indicator_cont_dup + 1
+    WHERE proj_id IN (SELECT proj_id FROM temp_project_ids);
+
+    -- Cleanup
+    DELETE FROM mockup_grids mg WHERE ST_IsEmpty(mg.geom);
+    DROP TABLE IF EXISTS temp_project_ids;
+END $$;

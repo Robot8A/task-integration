@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """
 This is a Python script for processing HOTOSM project data and storing it in a SQL database.
-Author: Héctor Ochoa Ortiz
 Last update: 2024-10-25
 """
 

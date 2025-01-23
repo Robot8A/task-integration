@@ -29,13 +29,13 @@
 --     END LOOP;
 -- END $$;
 
-CREATE MATERIALIZED VIEW nonconnecting_nodes
-WITH (parallel_workers = 8) AS
-WITH project_ids AS (
-    SELECT proj_id
-    FROM selected_projects
-    WHERE typename = 'ROADS'
-)
-SELECT project_ids.proj_id AS project_id, gncsen.node AS geom, gncsen.point_type
-FROM project_ids
-JOIN LATERAL get_nonconnecting_start_end_nodes_in_utm(project_ids.proj_id) AS gncsen ON true
+-- CREATE MATERIALIZED VIEW nonconnecting_nodes
+-- WITH (parallel_workers = 8) AS
+-- WITH project_ids AS (
+--     SELECT proj_id
+--     FROM selected_projects
+--     WHERE typename = 'ROADS'
+-- )
+-- SELECT project_ids.proj_id AS project_id, gncsen.node AS geom, gncsen.point_type
+-- FROM project_ids
+-- JOIN LATERAL get_nonconnecting_start_end_nodes_in_utm(project_ids.proj_id) AS gncsen ON true

@@ -21,8 +21,8 @@ RETURNS TABLE(taskid INTEGER, geom GEOMETRY) AS $$
 BEGIN
 	IF do_mockup_grid THEN
 		RETURN QUERY
-		SELECT mpg.taskid, mpg.geom FROM mockup_polygon_grids AS mpg
-		WHERE mpg.project_id = get_grids_in_utm.project_id;
+		SELECT msg.taskid, mpg.geom FROM mockup_selected_grids AS msg
+		WHERE msg.project_id = get_grids_in_utm.project_id;
 	ELSE
 		RETURN QUERY
 		SELECT g.taskid, g.geom_utm FROM grids g
@@ -179,7 +179,7 @@ END $$ LANGUAGE plpgsql PARALLEL SAFE;
 
 -- -- Generates mockup grids
 -- DROP FUNCTION IF EXISTS generate_grid;
--- CREATE FUNCTION generate_grid(input_geom geometry, x_width DOUBLE PRECISION, y_height DOUBLE PRECISION)
+-- CREATE FUNCTION generate_grid(input_geom geometry)
 -- RETURNS TABLE (id INT, geom geometry(POLYGON)) AS $$
 -- DECLARE
 -- 	minx DOUBLE PRECISION;
@@ -188,9 +188,14 @@ END $$ LANGUAGE plpgsql PARALLEL SAFE;
 -- 	maxy DOUBLE PRECISION;
 -- 	x DOUBLE PRECISION;
 -- 	y DOUBLE PRECISION;
--- 	grid_id integer := 0;
--- 	grid_cell geometry;
--- 	srid integer;
+-- 	grid_id INTEGER := 0;
+-- 	grid_cell GEOMETRY;
+-- 	srid INTEGER;
+-- 	area DOUBLE PRECISION;
+-- 	x_width DOUBLE PRECISION;
+-- 	x_width_factor_of_area DOUBLE PRECISION := 1000;
+-- 	y_height DOUBLE PRECISION;
+-- 	y_height_factor_of_area DOUBLE PRECISION := 1000;
 -- BEGIN
 -- 	-- Get the bounding box of the input geometry
 -- 	SELECT
@@ -205,6 +210,10 @@ END $$ LANGUAGE plpgsql PARALLEL SAFE;
 --     	maxy;
 
 -- 	SELECT ST_SRID(input_geom) INTO srid;
+-- 	SELECT ST_Area(input_geom) INTO area;
+
+-- 	x_width := sqrt(area) / x_width_factor_of_area;
+-- 	y_height := sqrt(area) / y_height_factor_of_area;
 
 -- 	-- Generate the grid cells and return them
 -- 	x := minx;
@@ -510,7 +519,7 @@ DROP FUNCTION IF EXISTS generate_mockup_polygon_grid;
 CREATE OR REPLACE FUNCTION generate_mockup_polygon_grid(project_id INT, percentage_covered DOUBLE PRECISION)
 RETURNS TABLE (taskid INT, geom GEOMETRY) AS $$
 DECLARE
-	dividing_factor INTEGER := 100;
+	dividing_factor INTEGER := 25;
 BEGIN
     -- Return a combined result set from divide_polygon for all grids
     RETURN QUERY
@@ -527,3 +536,14 @@ BEGIN
         ) AS subpolygon
     ) AS subpolygon_lateral;
 END $$ LANGUAGE plpgsql PARALLEL SAFE;
+
+-----------
+-- OTHER --
+-----------
+
+DROP PROCEDURE IF EXISTS raise_notice;
+CREATE PROCEDURE raise_notice (s TEXT) LANGUAGE plpgsql AS 
+$$
+BEGIN 
+	RAISE NOTICE 'TIME % | %', clock_timestamp(), s;
+END $$;
