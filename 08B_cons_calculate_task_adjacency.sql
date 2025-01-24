@@ -2,8 +2,8 @@ DO $$
 BEGIN
     -- Get 10% of the selected projects
 	CALL raise_notice('Selecting projects');
-	DROP TABLE IF EXISTS temp_project_ids_08B;
-	CREATE TEMP TABLE temp_project_ids_08B AS
+	DROP TABLE IF EXISTS temp_project_ids;
+	CREATE TEMP TABLE temp_project_ids AS
 	SELECT proj_id, typename
 	FROM selected_projects
 	WHERE indicator_cons = 7 AND typename = 'BUILDINGS'
@@ -19,7 +19,7 @@ BEGIN
         CREATE TABLE adjacent_tasks AS
         WITH tasks AS (
             SELECT p.proj_id, g.taskid, ST_MakeValid(g.geom) AS geom
-            FROM temp_project_ids_08B p
+            FROM temp_project_ids p
             JOIN grids g ON g.project_id = p.proj_id
         )
         SELECT t1.proj_id, t1.taskid AS task_id, t2.taskid AS adjacent_task_id
@@ -33,7 +33,7 @@ BEGIN
         INSERT INTO adjacent_tasks (proj_id, task_id, adjacent_task_id)
         WITH tasks AS (
             SELECT p.proj_id, g.taskid, ST_MakeValid(g.geom) AS geom
-            FROM temp_project_ids_08B p
+            FROM temp_project_ids p
             JOIN grids g ON g.project_id = p.proj_id
         )
         SELECT t1.proj_id, t1.taskid AS task_id, t2.taskid AS adjacent_task_id
@@ -46,9 +46,9 @@ BEGIN
     -- Update the selected projects to indicate that they have been processed
     UPDATE selected_projects
     SET indicator_cons = indicator_cons + 1
-    WHERE proj_id IN (SELECT proj_id FROM temp_project_ids_08B)
+    WHERE proj_id IN (SELECT proj_id FROM temp_project_ids)
     AND typename = 'BUILDINGS';
 
     -- Cleanup
-    DROP TABLE IF EXISTS temp_project_ids_08B;
+    DROP TABLE IF EXISTS temp_project_ids;
 END $$;

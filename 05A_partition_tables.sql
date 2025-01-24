@@ -147,12 +147,8 @@ BEGIN
     RAISE NOTICE 'Populating partitioned tables';
     INSERT INTO buildings (project_id, osm_id, geom, geom_utm) SELECT bpp.project_id, bpp.osm_id, NULL, ST_Transform(bpp.geom, get_utm_zone(bpp.project_id)) FROM buildings_pre_partition bpp;
 
-    -- Alter grids table to add an extra geometry column, with the geom in UTM
-    -- ALTER TABLE buildings ADD COLUMN geom_utm geometry(Geometry);
-    -- UPDATE
-    --     buildings
-    -- SET
-    --     geom_utm = ST_Transform(geom, get_utm_zone(project_id));
+    -- Alter buildings table to remove the original geometry column
+    ALTER TABLE buildings DROP COLUMN geom;
 
     RAISE NOTICE 'Dropping the original table';
     DROP TABLE buildings_pre_partition;

@@ -95,14 +95,14 @@ CREATE FUNCTION get_buildings_from_tasks(project_id INT, task_ids INT[])
 RETURNS TABLE(osm_id INTEGER, geom GEOMETRY) AS $$
 BEGIN
 	RETURN QUERY
-	SELECT b.osm_id, b.geom
-	FROM buildings_utm b
+	SELECT b.osm_id, b.geom_utm as geom
+	FROM buildings b
 	WHERE b.project_id = get_buildings_from_tasks.project_id
 	AND EXISTS (
 		SELECT 1
 		FROM get_grids_in_utm(get_buildings_from_tasks.project_id) hg
 		WHERE hg.taskid = ANY(get_buildings_from_tasks.task_ids)
-		AND ST_Intersects(b.geom, hg.geom)
+		AND ST_Intersects(b.geom_utm, hg.geom)
 	);
 END $$ LANGUAGE plpgsql PARALLEL SAFE;
 
