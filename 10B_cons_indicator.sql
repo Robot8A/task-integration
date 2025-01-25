@@ -16,14 +16,12 @@ BEGIN
     CALL raise_notice('Calculating Geary''s C');
     IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'consistency') THEN
         CREATE TABLE consistency AS
-        SELECT tpi.proj_id, cgc.* 
-        FROM temp_project_ids tpi
-        JOIN LATERAL calculate_gearys_c_for_project(tpi.proj_id) AS cgc ON true;
+        SELECT tpi.proj_id, calculate_gearys_c_for_project(tpi.proj_id) AS consistency 
+        FROM temp_project_ids tpi;
     ELSE
         INSERT INTO consistency (proj_id, cgc.*)
-        SELECT tpi.proj_id, cgc.* 
-        FROM temp_project_ids tpi
-        JOIN LATERAL calculate_gearys_c_for_project(tpi.proj_id) AS cgc ON true;
+        SELECT tpi.proj_id,  calculate_gearys_c_for_project(tpi.proj_id) AS consistency 
+        FROM temp_project_ids tpi;
     END IF;
     CALL raise_notice('Geary''s C calculated');
 
