@@ -8,8 +8,8 @@ BEGIN
 	FROM selected_projects
 	WHERE indicator_cons = 7 AND typename = 'BUILDINGS'
 	ORDER BY proj_id
-	--LIMIT (SELECT COUNT(*) * 0.0025 FROM selected_projects);
-	LIMIT 10;
+	LIMIT (SELECT COUNT(*) * 0.05 FROM selected_projects);
+	--LIMIT 10;
 	CALL raise_notice('Projects selected');
 
 

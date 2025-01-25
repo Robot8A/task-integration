@@ -41,17 +41,17 @@ BEGIN
 
     -- Loop through each task in the project
     FOR task IN
-        SELECT task_id, avg_vertices
-        FROM avg_vertices_per_building_per_task
-        WHERE project_id = calculate_gearys_c_for_project.project_id
+        SELECT avgpbpt.taskid, avgpbpt.avg_vertices
+        FROM avg_vertices_per_building_per_task avgpbpt
+        WHERE avgpbpt.proj_id = calculate_gearys_c_for_project.project_id
     LOOP
         -- Loop through each adjacent task
         FOR adjacent_task IN
-            SELECT adjacent_task_id, avg_vertices
-            FROM task_adjacency
-            JOIN avg_vertices_per_building_per_task
-            ON task_adjacency.adjacent_task_id = avg_vertices_per_building_per_task.task_id
-            WHERE task_adjacency.task_id = task.task_id
+            SELECT ata.adjacent_task_id, avgpbpt.avg_vertices
+            FROM adjacent_tasks ata
+            JOIN avg_vertices_per_building_per_task avgpbpt
+            ON ata.adjacent_task_id = avgpbpt.taskid
+            WHERE ata.task_id = task.taskid
         LOOP
             -- Calculate the weight
             total_weight := total_weight + 1;
