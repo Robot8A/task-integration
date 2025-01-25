@@ -30,7 +30,7 @@ DECLARE
     n INT;
 BEGIN
     -- Calculate the mean of avg_vertices for the project
-    SELECT AVG(avg_vertices) INTO mean_vertices
+    SELECT AVG(COALESCE(avg_vertices, 0)) INTO mean_vertices
     FROM avg_vertices_per_building_per_task
     WHERE project_id = calculate_gearys_c_for_project.project_id;
 
@@ -58,8 +58,8 @@ BEGIN
 
             -- Calculate the squared difference of avg_vertices
             sum_of_squared_differences := sum_of_squared_differences + 
-                (task.avg_vertices - adjacent_task.avg_vertices) * 
-                (task.avg_vertices - adjacent_task.avg_vertices);
+                (COALESCE(task.avg_vertices, 0) - COALESCE(adjacent_task.avg_vertices, 0)) * 
+                (COALESCE(task.avg_vertices, 0) - COALESCE(adjacent_task.avg_vertices, 0));
         END LOOP;
     END LOOP;
     
