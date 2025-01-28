@@ -19,8 +19,8 @@ BEGIN
         SELECT tpi.proj_id, calculate_gearys_c_for_project(tpi.proj_id) AS consistency 
         FROM temp_project_ids tpi;
     ELSE
-        INSERT INTO consistency (proj_id, cgc.*)
-        SELECT tpi.proj_id,  calculate_gearys_c_for_project(tpi.proj_id) AS consistency 
+        INSERT INTO consistency (proj_id, consistency)
+        SELECT tpi.proj_id, calculate_gearys_c_for_project(tpi.proj_id) AS consistency 
         FROM temp_project_ids tpi;
     END IF;
     CALL raise_notice('Geary''s C calculated');

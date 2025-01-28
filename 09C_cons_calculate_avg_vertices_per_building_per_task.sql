@@ -1,6 +1,5 @@
 DO $$
 BEGIN
-    -- FIX BUILDINGS UTM
     -- Get 10% of the selected projects
 	CALL raise_notice('Selecting projects');
 	DROP TABLE IF EXISTS temp_project_ids;
