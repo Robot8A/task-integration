@@ -1,8 +1,14 @@
 DO $$
 BEGIN
+    RAISE NOTICE '-------------------------------------------';
+    RAISE NOTICE '-- 08B_cons_calculate_task_adjacency.sql --';
+    RAISE NOTICE '-------------------------------------------';
+
     -- Get 10% of the selected projects
 	CALL raise_notice('Selecting projects');
-	DROP TABLE IF EXISTS temp_project_ids;
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'temp_project_ids') THEN
+        DROP TABLE temp_project_ids;
+    END IF;
 	CREATE TEMP TABLE temp_project_ids AS
 	SELECT proj_id, typename
 	FROM selected_projects
@@ -10,9 +16,15 @@ BEGIN
 	ORDER BY proj_id
 	;
     --LIMIT (SELECT COUNT(*) * 0.05 FROM selected_projects);
-	--LIMIT 10;
+	--LIMIT 100;
 	CALL raise_notice('Projects selected');
 
+    -- Exit if temp_project_ids is empty
+    IF (SELECT COUNT(*) FROM temp_project_ids) = 0 THEN
+        CALL raise_notice('No projects left, exiting');
+        DROP TABLE IF EXISTS temp_project_ids;
+        RETURN;
+    END IF;
 
     -- Calculate task adjacency
     CALL raise_notice('Calculating task adjacency');
@@ -51,5 +63,6 @@ BEGIN
     AND typename = 'BUILDINGS';
 
     -- Cleanup
-    DROP TABLE IF EXISTS temp_project_ids;
+    DROP TABLE temp_project_ids;
+    CALL raise_notice('Done');
 END $$;

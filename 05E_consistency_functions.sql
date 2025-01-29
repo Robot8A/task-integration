@@ -7,23 +7,24 @@ RETURNS TABLE(
 DECLARE
     vertices_sum FLOAT;
 BEGIN
-    SELECT SUM(ST_NPoints(geom) - 1) INTO vertices_sum
+    SELECT SUM(ST_NPoints(geom)) INTO vertices_sum
     FROM get_buildings_from_tasks(project_id, task_ids);
 
     SELECT COUNT(*) INTO buildings_count
     FROM get_buildings_from_tasks(project_id, task_ids);
 
-    avg_vertices := vertices_sum / NULLIF(buildings_count, 0);
+    avg_vertices := (vertices_sum - buildings_count) / NULLIF(buildings_count, 0);
 
     RETURN QUERY SELECT avg_vertices, buildings_count;
 END $$ LANGUAGE plpgsql;
 
 DROP FUNCTION IF EXISTS calculate_gearys_c_for_project;
-CREATE FUNCTION calculate_gearys_c_for_project(project_id INT)
+CREATE FUNCTION calculate_gearys_c_for_project(project_id INT, null_strategy TEXT DEFAULT 'EXCLUDE', weight_strategy TEXT DEFAULT 'BUILDING_COUNT')
 RETURNS FLOAT AS $$
 DECLARE
     task RECORD;
     adjacent_task RECORD;
+    current_weight FLOAT;
     total_weight FLOAT := 0;
     sum_of_squared_differences FLOAT := 0;
     sum_of_squared_mean_differences FLOAT := 0;
@@ -33,14 +34,16 @@ BEGIN
     -- Calculate the mean of avg_vertices for the project
     SELECT AVG(COALESCE(avgpbpt.avg_vertices, 0)) INTO mean_vertices
     FROM avg_vertices_per_building_per_task avgpbpt
-    WHERE avgpbpt.proj_id = calculate_gearys_c_for_project.project_id;
+    WHERE avgpbpt.proj_id = calculate_gearys_c_for_project.project_id
+    AND (null_strategy != 'EXCLUDE' OR avgpbpt.avg_vertices IS NOT NULL);
 
     -- Loop through each task in the project
     FOR task IN
         SELECT avgpbpt.taskid, COALESCE(avgpbpt.avg_vertices, 0) AS avg_vertices, proj_id
         FROM avg_vertices_per_building_per_task avgpbpt
         WHERE avgpbpt.proj_id = calculate_gearys_c_for_project.project_id
-    LOOP
+        AND (null_strategy != 'EXCLUDE' OR avgpbpt.avg_vertices IS NOT NULL)  LOOP
+        
         -- Increment the task count
         n := n + 1;
 
@@ -51,17 +54,24 @@ BEGIN
 
         -- Loop through each adjacent task
         FOR adjacent_task IN
-            SELECT ata.adjacent_task_id, COALESCE(avgpbpt.avg_vertices, 0) AS avg_vertices
+            SELECT ata.adjacent_task_id, COALESCE(avgpbpt.avg_vertices, 0) AS avg_vertices, avgpbpt.buildings_count
             FROM adjacent_tasks ata
             JOIN avg_vertices_per_building_per_task avgpbpt
             ON ata.adjacent_task_id = avgpbpt.taskid
             WHERE ata.task_id = task.taskid AND ata.proj_id = task.proj_id AND avgpbpt.proj_id = task.proj_id
+            AND (null_strategy != 'EXCLUDE' OR avgpbpt.avg_vertices IS NOT NULL)
         LOOP
             -- Calculate the total weight
-            total_weight := total_weight + 1;
+            IF weight_strategy = 'BUILDING_COUNT' THEN
+                current_weight := adjacent_task.buildings_count;
+            ELSE
+                current_weight := 1;
+            END IF;
+            total_weight := total_weight + current_weight;
 
             -- Calculate the squared difference of avg_vertices
             sum_of_squared_differences := sum_of_squared_differences + 
+                current_weight *
                 (task.avg_vertices - adjacent_task.avg_vertices) * 
                 (task.avg_vertices - adjacent_task.avg_vertices);
         END LOOP;
