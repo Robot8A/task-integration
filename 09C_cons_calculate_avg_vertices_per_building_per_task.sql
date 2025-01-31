@@ -1,8 +1,14 @@
 DO $$
 BEGIN
+    RAISE NOTICE '---------------------------------------------------------------';
+    RAISE NOTICE '-- 09C_cons_calculate_avg_vertices_per_building_per_task.sql --';
+    RAISE NOTICE '---------------------------------------------------------------';
+
     -- Get 10% of the selected projects
 	CALL raise_notice('Selecting projects');
-	DROP TABLE IF EXISTS temp_project_ids;
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'temp_project_ids') THEN
+        DROP TABLE temp_project_ids;
+    END IF;
 	CREATE TEMP TABLE temp_project_ids AS
 	SELECT proj_id, typename
 	FROM selected_projects
@@ -17,19 +23,21 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'avg_vertices_per_building_per_task') THEN
         CREATE TABLE avg_vertices_per_building_per_task AS
         WITH tasks AS (
-            SELECT p.proj_id, g.taskid, ST_MakeValid(g.geom) AS geom
+            SELECT p.proj_id, g.taskid
             FROM temp_project_ids p
             JOIN grids g ON g.project_id = p.proj_id
         )
         SELECT t.proj_id, t.taskid, avg_data.avg_vertices, avg_data.buildings_count
         FROM tasks t
         CROSS JOIN LATERAL (SELECT * FROM calculate_avg_vertices_per_building_from_tasks(t.proj_id, ARRAY[t.taskid])) AS avg_data;
+
+        ALTER TABLE avg_vertices_per_building_per_task ADD PRIMARY KEY (proj_id, taskid);
         CREATE INDEX ON avg_vertices_per_building_per_task (proj_id);
         CREATE INDEX ON avg_vertices_per_building_per_task (taskid);
     ELSE
         INSERT INTO avg_vertices_per_building_per_task (proj_id, taskid, avg_vertices, buildings_count)
         WITH tasks AS (
-            SELECT p.proj_id, g.taskid, ST_MakeValid(g.geom) AS geom
+            SELECT p.proj_id, g.taskid
             FROM temp_project_ids p
             JOIN grids g ON g.project_id = p.proj_id
         )
@@ -46,5 +54,5 @@ BEGIN
     AND typename = 'BUILDINGS';
 
     -- Cleanup
-    DROP TABLE IF EXISTS temp_project_ids;
+    DROP TABLE temp_project_ids;
 END $$;
