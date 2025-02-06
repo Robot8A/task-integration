@@ -1,22 +1,22 @@
-DROP FUNCTION IF EXISTS calculate_avg_vertices_per_building_from_tasks;
-CREATE FUNCTION calculate_avg_vertices_per_building_from_tasks(project_id INT, task_ids INT[])
-RETURNS TABLE(
-    avg_vertices FLOAT,
-    buildings_count INT
-) AS $$
-DECLARE
-    vertices_sum FLOAT;
-BEGIN
-    SELECT SUM(ST_NPoints(geom)) INTO vertices_sum
-    FROM get_buildings_from_tasks(project_id, task_ids);
+-- DROP FUNCTION IF EXISTS calculate_avg_vertices_per_building_from_tasks;
+-- CREATE FUNCTION calculate_avg_vertices_per_building_from_tasks(project_id INT, task_ids INT[])
+-- RETURNS TABLE(
+--     avg_vertices FLOAT,
+--     buildings_count INT
+-- ) AS $$
+-- DECLARE
+--     vertices_sum FLOAT;
+-- BEGIN
+--     SELECT SUM(ST_NPoints(geom)) INTO vertices_sum
+--     FROM get_buildings_from_tasks(project_id, task_ids);
 
-    SELECT COUNT(*) INTO buildings_count
-    FROM get_buildings_from_tasks(project_id, task_ids);
+--     SELECT COUNT(*) INTO buildings_count
+--     FROM get_buildings_from_tasks(project_id, task_ids);
 
-    avg_vertices := (vertices_sum - buildings_count) / NULLIF(buildings_count, 0);
+--     avg_vertices := (vertices_sum - buildings_count) / NULLIF(buildings_count, 0);
 
-    RETURN QUERY SELECT avg_vertices, buildings_count;
-END $$ LANGUAGE plpgsql;
+--     RETURN QUERY SELECT avg_vertices, buildings_count;
+-- END $$ LANGUAGE plpgsql;
 
 DROP FUNCTION IF EXISTS calculate_gearys_c_for_project;
 CREATE FUNCTION calculate_gearys_c_for_project(project_id INT, null_strategy TEXT DEFAULT 'EXCLUDE', weight_strategy TEXT DEFAULT 'BUILDING_COUNT')
@@ -64,6 +64,8 @@ BEGIN
             -- Calculate the total weight
             IF weight_strategy = 'BUILDING_COUNT' THEN
                 current_weight := adjacent_task.buildings_count;
+            ELSIF weight_strategy = 'BUILDING_COUNT_LOG' THEN
+                current_weight := LOG(adjacent_task.buildings_count + 1);
             ELSE
                 current_weight := 1;
             END IF;
@@ -81,7 +83,7 @@ BEGIN
     IF n > 1 THEN
 
         -- Calculate Geary's C
-        IF total_weight > 0 THEN
+        IF total_weight > 0 AND sum_of_squared_mean_differences > 0 THEN
             RETURN ((n - 1) * sum_of_squared_differences) / (2 * total_weight * sum_of_squared_mean_differences);
         ELSE
             RETURN NULL;

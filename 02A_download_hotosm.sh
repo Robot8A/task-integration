@@ -60,6 +60,31 @@ for project_id in $project_ids; do
     current_project=$((current_project + 1))
 done
 
+# Download project AOI
+echo "**************************"
+echo "DOWNLOADING PROJECT AOI..."
+echo "**************************"
+PAYLOAD="{}"
+current_project=1
+for project_id in $project_ids; do
+    filename="data/project_${project_id}_aoi.geojson"
+    while : ; do
+        if [ ! -f "${filename}" ]; then
+            echo "Downloading ${filename} ... STATUS(${current_project} of ${num_project_ids})"
+            curl -s -X GET -H "Accept-Language: en;accept: application/json" -d "${PAYLOAD}" "${API_ENDPOINT}projects/${project_id}/queries/aoi/" > "${filename}"
+            if [ $? -eq 0 ]; then
+                break
+            fi
+            echo "Failed to download project ${project_id}. Retrying in 3 seconds..."
+            sleep 3
+        else
+            echo "File ${filename} already exists. Skipping download."
+            break
+        fi
+    done
+    current_project=$((current_project + 1))
+done
+
 # Download project OSM buildings
 echo "****************************"
 echo "DOWNLOADING OSM BUILDINGS..."

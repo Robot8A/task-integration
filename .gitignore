@@ -1,2 +1,4 @@
 data
+.venv
 project_ids.txt
+s2_cells.csv
