@@ -1,4 +1,6 @@
 DO $$
+DECLARE
+    building_source TEXT := 'OSM';
 BEGIN
     RAISE NOTICE '---------------------------------------------------------------';
     RAISE NOTICE '-- 09C_cons_calculate_avg_vertices_per_building_per_task.sql --';
@@ -12,7 +14,8 @@ BEGIN
 	CREATE TEMP TABLE temp_project_ids AS
 	SELECT proj_id
 	FROM selected_projects
-	WHERE indicator_cons = 8 AND typename = 'BUILDINGS'
+    WHERE (building_source = 'OSM' AND indicator_cons = 8 OR building_source != 'OSM' AND indicator_cons_ai = 8)
+    AND typename = 'BUILDINGS'
 	ORDER BY proj_id
 	--LIMIT (SELECT COUNT(*) * 0.0025 FROM selected_projects);
 	LIMIT 100;

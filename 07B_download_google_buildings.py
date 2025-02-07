@@ -17,7 +17,7 @@ database = "hotosm"
 user = "postgres"
 password = "postgres"
 engine = create_engine(f'postgresql://{user}:{password}@{host}:{port}/{database}')
-table_name = "google_buildings_pre_partition"
+table_name = "s2_cell_google_building_uploaded"
 
 # Create the buildings table on the database
 with engine.connect() as conn:
@@ -40,7 +40,7 @@ with open('project_ids.txt', 'r') as f:
 # Check which project ids are already in the database, to avoid downloading buildings again
 with engine.connect() as conn:
     try:
-        result = conn.execute(text(f"SELECT project_id FROM {table_name} WHERE project_id IN ({','.join(project_ids)})"))
+        result = conn.execute(text(f"SELECT distinct(project_id) FROM {table_name} WHERE project_id IN ({','.join(project_ids)})"))
         existing_project_ids = {row[0] for row in result.fetchall()}
         project_ids = [pid for pid in project_ids if pid not in existing_project_ids]
     except Exception as e:

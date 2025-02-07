@@ -19,7 +19,12 @@
 -- END $$ LANGUAGE plpgsql;
 
 DROP FUNCTION IF EXISTS calculate_gearys_c_for_project;
-CREATE FUNCTION calculate_gearys_c_for_project(project_id INT, null_strategy TEXT DEFAULT 'EXCLUDE', weight_strategy TEXT DEFAULT 'BUILDING_COUNT')
+CREATE FUNCTION calculate_gearys_c_for_project(
+    project_id INT,
+    null_strategy TEXT DEFAULT 'EXCLUDE',
+    weight_strategy TEXT DEFAULT 'BUILDING_COUNT',
+    building_source TEXT DEFAULT 'OSM'
+)
 RETURNS FLOAT AS $$
 DECLARE
     task RECORD;
@@ -35,14 +40,17 @@ BEGIN
     SELECT AVG(COALESCE(avgpbpt.avg_vertices, 0)) INTO mean_vertices
     FROM avg_vertices_per_building_per_task avgpbpt
     WHERE avgpbpt.proj_id = calculate_gearys_c_for_project.project_id
-    AND (null_strategy != 'EXCLUDE' OR avgpbpt.avg_vertices IS NOT NULL);
+    AND (null_strategy != 'EXCLUDE' OR avgpbpt.avg_vertices IS NOT NULL)
+    AND avgpbpt.building_source = calculate_gearys_c_for_project.building_source;
 
     -- Loop through each task in the project
     FOR task IN
         SELECT avgpbpt.taskid, COALESCE(avgpbpt.avg_vertices, 0) AS avg_vertices, proj_id
         FROM avg_vertices_per_building_per_task avgpbpt
         WHERE avgpbpt.proj_id = calculate_gearys_c_for_project.project_id
-        AND (null_strategy != 'EXCLUDE' OR avgpbpt.avg_vertices IS NOT NULL)  LOOP
+        AND (null_strategy != 'EXCLUDE' OR avgpbpt.avg_vertices IS NOT NULL)  
+        AND avgpbpt.building_source = calculate_gearys_c_for_project.building_source
+    LOOP
         
         -- Increment the task count
         n := n + 1;
@@ -60,6 +68,7 @@ BEGIN
             ON ata.adjacent_task_id = avgpbpt.taskid
             WHERE ata.task_id = task.taskid AND ata.proj_id = task.proj_id AND avgpbpt.proj_id = task.proj_id
             AND (null_strategy != 'EXCLUDE' OR avgpbpt.avg_vertices IS NOT NULL)
+            AND avgpbpt.building_source = calculate_gearys_c_for_project.building_source
         LOOP
             -- Calculate the total weight
             IF weight_strategy = 'BUILDING_COUNT' THEN
