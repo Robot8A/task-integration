@@ -5,6 +5,7 @@ import os
 import requests
 import shapely
 from sqlalchemy import create_engine, text
+from tqdm import tqdm
 
 # Set working directory as the same one where the file is located
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -17,7 +18,8 @@ database = "hotosm"
 user = "postgres"
 password = "postgres"
 engine = create_engine(f'postgresql://{user}:{password}@{host}:{port}/{database}')
-table_name = "s2_cell_google_building_uploaded"
+table_name = "google_buildings"
+table_name_log = "s2_cell_google_building_uploaded"
 
 # Create the buildings table on the database
 with engine.connect() as conn:
@@ -40,11 +42,22 @@ with open('project_ids.txt', 'r') as f:
 # Check which project ids are already in the database, to avoid downloading buildings again
 with engine.connect() as conn:
     try:
-        result = conn.execute(text(f"SELECT distinct(project_id) FROM {table_name} WHERE project_id IN ({','.join(project_ids)})"))
+        result = conn.execute(text(f"SELECT distinct(project_id) FROM {table_name_log} WHERE project_id IN ({','.join(project_ids)});"))
         existing_project_ids = {row[0] for row in result.fetchall()}
         project_ids = [pid for pid in project_ids if pid not in existing_project_ids]
     except Exception as e:
         print(f"Error executing query: {e}")
+
+# Check if the project ids are not within the selected projects in the database
+with engine.connect() as conn:
+    try:
+        result = conn.execute(text(f"SELECT distinct(sp.proj_id) FROM selected_projects sp WHERE sp.typename = 'BUILDINGS' AND sp.proj_id IN ({','.join(project_ids)});"))
+        project_ids = list({row[0] for row in result.fetchall()})
+    except Exception as e:
+        print(f"Error executing query: {e}")
+
+# Order the project ids
+project_ids.sort()
 
 # Create the s2 cell covering for each project file
 with open('s2_cells.csv', 'w') as s2f:
@@ -92,14 +105,24 @@ with open('s2_cells.csv', 'w') as s2f:
             if not os.path.exists(file_path):
                 print(f'Project {project_id} | Downloading s2 cell {cell} buildings...')
                 url = f'https://storage.googleapis.com/open-buildings-data/v3/polygons_s2_level_4_gzip/{cell}_buildings.csv.gz'
-                response = requests.get(url)
-
-                if response.status_code == 200:
-                    with open(file_path, 'wb') as f:
-                        f.write(response.content)
-                    print(f'Project {project_id} | s2 cell {cell} buildings downloaded successfully')
-                else:
-                    print(f'Project {project_id} | Error downloading {url}')
+                with requests.get(url, stream=True) as response:
+                    if response.status_code == 200:
+                        total_length = response.headers.get('content-length')
+                        if total_length is None:  # no content length header
+                            with open(file_path, 'wb') as f:
+                                f.write(response.content)
+                        else:
+                            total_length = int(total_length)
+                            chunk_size = 1024
+                            with open(file_path, 'wb') as f:
+                                with tqdm(total=total_length, unit='B', unit_scale=True, desc=file_path) as pbar:
+                                    for chunk in response.iter_content(chunk_size=chunk_size):
+                                        if chunk:
+                                            f.write(chunk)
+                                            pbar.update(len(chunk))
+                        print(f'Project {project_id} | s2 cell {cell} buildings downloaded successfully')
+                    else:
+                        print(f'Project {project_id} | Error downloading {url} - Status code: {response.status_code}')
             else:
                 print(f'Project {project_id} | s2 cell {cell} buildings already downloaded')
     

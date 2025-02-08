@@ -1,7 +1,5 @@
 import os
-import subprocess
 import sys
-import tempfile
 import shapely
 from tqdm import tqdm
 import pandas as pd
@@ -36,7 +34,7 @@ database = "hotosm"
 user = "postgres"
 password = "postgres"
 engine = create_engine(f'postgresql://{user}:{password}@{host}:{port}/{database}')
-table_name = "google_buildings_pre_partition"
+table_name = "google_buildings"
 table_name_log = "s2_cell_google_building_uploaded"
 
 # Create the log table on the database
@@ -70,54 +68,47 @@ for s2_cell in tqdm(s2_cells, desc="Processing s2 cells"):
 
         selected_project_ids = data_dict[s2_cell]
 
-        if selected_project_ids:
-            # Create a temporary directory
-            temp_dir = tempfile.mkdtemp()
-
-            # Unzip file
-            with open(f"{temp_dir}/{s2_cell}_buildings.csv", 'w') as f_out:
-                subprocess.run(["gunzip", "-c", f"data/{s2_cell}_buildings.csv.gz"], stdout=f_out)
-
-            # Read the file in chunks
-            chunksize = 10000
-            for chunk in tqdm(pd.read_csv(f"{temp_dir}/{s2_cell}_buildings.csv", chunksize=chunksize), desc="Processing chunks", leave=False):
-                chunk['geom'] = gpd.GeoSeries.from_wkt(chunk['geometry'])
-                chunk.drop('geometry', axis=1, inplace=True)
-                chunk = gpd.GeoDataFrame(chunk, geometry='geom', crs="EPSG:4326")
-            
-                for project_id in tqdm(selected_project_ids, desc="Processing projects", leave=False):
-                    # Check if the project-s2 cell pairs is processed
-                    with engine.connect() as conn:
-                        result = conn.execute(text(f"""
-                        SELECT COUNT(*)
-                        FROM {table_name_log}
-                        WHERE s2_cell_token = '{s2_cell}' AND project_id = {project_id}
-                        """)).fetchone()
-                        
-                    if result[0] > 0:
-                        # Read the Area of Interest of the given project
-                        with open(os.path.join(data_dir, f'project_{project_id}_aoi.geojson'), 'r') as f:
-                            aoi = shapely.from_geojson(f.read())
-                        
-                        # Filter buildings that are within the AOI
-                        buildings_s2 = chunk.loc[chunk['geom'].apply(lambda x: aoi.contains(shapely.geometry.shape(x)))]
-                        
+        if len(selected_project_ids) > 0:
+            # Read the gzipped CSV file in chunks
+            chunksize = 100000
+            with pd.read_csv(f"data/{s2_cell}_buildings.csv.gz", compression='gzip', chunksize=chunksize) as reader:
+                for chunk in tqdm(reader, desc="Reading CSV in chunks", leave=False):
+                    chunk['geom'] = gpd.GeoSeries.from_wkt(chunk['geometry'])
+                    chunk.drop('geometry', axis=1, inplace=True)
+                    chunk = gpd.GeoDataFrame(chunk, geometry='geom', crs="EPSG:4326")
+                            
+                    for project_id in tqdm(selected_project_ids, desc="Processing projects", leave=False):
+                        # Check if the project-s2 cell pairs is processed
                         with engine.connect() as conn:
-        
-                            # Insert the data into the database
-                            if not buildings_s2.empty:
-                                buildings_s2 = buildings_s2.copy()
-                                buildings_s2['project_id'] = project_id
-                                buildings_s2['s2_cell_token'] = s2_cell
-                                buildings_s2 = buildings_s2[['project_id', 's2_cell_token', 'geom']]
-                                buildings_s2.to_postgis(name=table_name, con=conn, if_exists='append', index=False)
-                                conn.commit()
+                            result = conn.execute(text(f"""
+                            SELECT COUNT(*)
+                            FROM {table_name_log}
+                            WHERE s2_cell_token = '{s2_cell}' AND project_id = {project_id}
+                            """)).fetchone()
+                            
+                        if result[0] == 0:
+                            # Read the Area of Interest of the given project
+                            with open(os.path.join(data_dir, f'project_{project_id}_aoi.geojson'), 'r') as f:
+                                aoi = shapely.from_geojson(f.read())
+                            
+                            # Filter buildings that are within the AOI
+                            buildings_s2 = chunk.loc[chunk['geom'].apply(lambda x: aoi.contains(shapely.geometry.shape(x)))]
+                            
+                            with engine.connect() as conn:
+                                # Insert the data into the database
+                                if not buildings_s2.empty:
+                                    buildings_s2 = buildings_s2.copy()
+                                    buildings_s2['project_id'] = project_id
+                                    buildings_s2['s2_cell_token'] = s2_cell
+                                    buildings_s2 = buildings_s2[['project_id', 's2_cell_token', 'geom']]
+                                    buildings_s2.to_postgis(name=table_name, con=conn, if_exists='append', index=False)
+                                    conn.commit()
 
             # Mark the project-s2 cell pairs as processed
             with engine.connect() as conn:
                 conn.execute(text(f"""
                 INSERT INTO {table_name_log} (s2_cell_token, project_id)
-                SELECT '{s2_cell}', project_id
+                SELECT '{s2_cell}', proj_id as project_id
                 FROM selected_projects
                 WHERE typename = 'BUILDINGS' AND proj_id IN ({','.join(map(str, selected_project_ids))});
                 """))
@@ -146,6 +137,3 @@ for s2_cell in tqdm(s2_cells, desc="Processing s2 cells"):
                         WHERE proj_id = {project_id}
                         """))
                         conn.commit()
-
-            # Delete the temporary directory
-            subprocess.run(["rm", "-rf", temp_dir])

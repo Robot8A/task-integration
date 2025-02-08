@@ -1,4 +1,6 @@
 DO $$
+DECLARE
+    building_source TEXT := 'GOOGLE';
 BEGIN
     -- Get 10% of the selected projects
 	CALL raise_notice('Selecting projects');
@@ -8,7 +10,8 @@ BEGIN
 	CREATE TEMP TABLE temp_project_ids AS
 	SELECT proj_id, typename
 	FROM selected_projects
-	WHERE indicator_cons = 9 AND typename = 'BUILDINGS'
+	WHERE (building_source = 'OSM' AND indicator_cons = 9 OR building_source != 'OSM' AND indicator_cons_ai = 9)
+    AND typename = 'BUILDINGS'
 	ORDER BY proj_id
 	;
     --LIMIT (SELECT COUNT(*) * 0.05 FROM selected_projects);
@@ -37,13 +40,13 @@ BEGIN
     CALL raise_notice('Calculating Geary''s C');
     IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'consistency') THEN
         CREATE TABLE consistency AS
-        SELECT tpi.proj_id, calculate_gearys_c_for_project(tpi.proj_id, ns.null_strategy, ws.weight_strategy) AS consistency, ns.null_strategy, ws.weight_strategy
+        SELECT tpi.proj_id, calculate_gearys_c_for_project(tpi.proj_id, ns.null_strategy, ws.weight_strategy, building_source) AS consistency, ns.null_strategy, ws.weight_strategy, building_source
         FROM temp_project_ids tpi
         JOIN null_strategies ns ON TRUE
         JOIN weight_strategies ws ON TRUE;
     ELSE
-        INSERT INTO consistency (proj_id, consistency, null_strategy, weight_strategy)
-        SELECT tpi.proj_id, calculate_gearys_c_for_project(tpi.proj_id, ns.null_strategy, ws.weight_strategy) AS consistency, ns.null_strategy, ws.weight_strategy
+        INSERT INTO consistency (proj_id, consistency, null_strategy, weight_strategy, building_source)
+        SELECT tpi.proj_id, calculate_gearys_c_for_project(tpi.proj_id, ns.null_strategy, ws.weight_strategy, building_source) AS consistency, ns.null_strategy, ws.weight_strategy, building_source
         FROM temp_project_ids tpi
         JOIN null_strategies ns ON TRUE
         JOIN weight_strategies ws ON TRUE;
