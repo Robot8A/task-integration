@@ -52,21 +52,15 @@ for s2_cell in tqdm(s2_cells, desc="Processing s2 cells"):
     if not os.path.isfile(f"data/{s2_cell}_buildings.csv.gz"):
         print(f"File data/{s2_cell}_buildings.csv.gz does not exist. Skipping transformation.", file=sys.stderr)
     else:
-        # # Check if the projects for this s2 cell are selected in the database and not already in the buildings table
-        # with engine.connect() as conn:
-        #     selected_projects = conn.execute(text(f"""
-        #     SELECT proj_id
-        #     FROM selected_projects
-        #     WHERE typename = 'BUILDINGS' AND proj_id IN ({','.join(map(str, data_dict[s2_cell]))})
-        #     AND proj_id NOT IN (
-        #         SELECT project_id
-        #         FROM {table_name}
-        #         WHERE s2_cell_token = '{s2_cell}'
-        #     );
-        #     """)).fetchall()
-        # selected_project_ids = [row[0] for row in selected_projects]
-
-        selected_project_ids = data_dict[s2_cell]
+        # Check if the projects for this s2 cell are selected in the database and not uploaded yet
+        with engine.connect() as conn:
+            selected_projects = conn.execute(text(f"""
+            SELECT proj_id
+            FROM selected_projects
+            WHERE typename = 'BUILDINGS' AND proj_id IN ({','.join(map(str, data_dict[s2_cell]))})
+            AND (indicator_cons_ai IS NULL OR indicator_cons_ai < 8)
+            """)).fetchall()
+        selected_project_ids = [row[0] for row in selected_projects]
 
         if len(selected_project_ids) > 0:
             # Read the gzipped CSV file in chunks
@@ -76,6 +70,11 @@ for s2_cell in tqdm(s2_cells, desc="Processing s2 cells"):
                     chunk['geom'] = gpd.GeoSeries.from_wkt(chunk['geometry'])
                     chunk.drop('geometry', axis=1, inplace=True)
                     chunk = gpd.GeoDataFrame(chunk, geometry='geom', crs="EPSG:4326")
+
+                    # If some geometry is multipolygon instead of polygon, convert to polygon
+                    # chunk['geom'] = chunk['geom'].apply(lambda geom: [shapely.geometry.Polygon(poly) for poly in geom] if geom.geom_type == 'MultiPolygon' else [geom])
+                    # chunk = chunk.explode('geom').reset_index(drop=True)
+                    # chunk = gpd.GeoDataFrame(chunk, geometry='geom', crs="EPSG:4326")
                             
                     for project_id in tqdm(selected_project_ids, desc="Processing projects", leave=False):
                         # Check if the project-s2 cell pairs is processed
@@ -101,7 +100,7 @@ for s2_cell in tqdm(s2_cells, desc="Processing s2 cells"):
                                     buildings_s2['project_id'] = project_id
                                     buildings_s2['s2_cell_token'] = s2_cell
                                     buildings_s2 = buildings_s2[['project_id', 's2_cell_token', 'geom']]
-                                    buildings_s2.to_postgis(name=table_name, con=conn, if_exists='append', index=False)
+                                    buildings_s2.to_postgis(name=table_name, con=conn, if_exists='append', index=False, dtype={'geom': 'Geometry'})
                                     conn.commit()
 
             # Mark the project-s2 cell pairs as processed
