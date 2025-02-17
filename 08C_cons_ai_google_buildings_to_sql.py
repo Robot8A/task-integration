@@ -130,8 +130,7 @@ with engine.connect() as conn:
                                         aoi = shapely.from_geojson(f.read())
                                     
                                     # Filter buildings that are within the AOI
-                                    buildings_s2 = chunk.loc[chunk['geom'].apply(lambda x: aoi.contains(shapely.geometry.shape(x)))]
-                                
+                                    buildings_s2 = chunk.loc[chunk['geom'].apply(lambda x: aoi.contains(shapely.validation.make_valid(x)))]
                                 
                                     # Insert the data into the database
                                     if not buildings_s2.empty:
