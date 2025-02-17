@@ -172,5 +172,7 @@ with engine.connect() as conn:
                 UPDATE selected_projects
                 SET indicator_cons_ai = 8
                 WHERE proj_id = {project_id}
+                AND typename = 'BUILDINGS'
+                AND (indicator_cons_ai IS NULL OR indicator_cons_ai < 8)
                 """))
                 conn.commit()      
