@@ -23,7 +23,8 @@ CREATE FUNCTION calculate_gearys_c_for_project(
     project_id INT,
     null_strategy TEXT DEFAULT 'EXCLUDE',
     weight_strategy TEXT DEFAULT 'BUILDING_COUNT',
-    building_source TEXT DEFAULT 'OSM'
+    building_source TEXT DEFAULT 'OSM',
+    applied_function TEXT DEFAULT 'MEDIAN'
 )
 RETURNS FLOAT AS $$
 DECLARE
@@ -41,7 +42,8 @@ BEGIN
     FROM avg_vertices_per_building_per_task avgpbpt
     WHERE avgpbpt.proj_id = calculate_gearys_c_for_project.project_id
     AND (null_strategy != 'EXCLUDE' OR avgpbpt.avg_vertices IS NOT NULL)
-    AND avgpbpt.building_source = calculate_gearys_c_for_project.building_source;
+    AND avgpbpt.building_source = calculate_gearys_c_for_project.building_source
+    AND avgpbpt.calculation = calculate_gearys_c_for_project.applied_function;
 
     -- Loop through each task in the project
     FOR task IN
@@ -50,6 +52,7 @@ BEGIN
         WHERE avgpbpt.proj_id = calculate_gearys_c_for_project.project_id
         AND (null_strategy != 'EXCLUDE' OR avgpbpt.avg_vertices IS NOT NULL)  
         AND avgpbpt.building_source = calculate_gearys_c_for_project.building_source
+        AND avgpbpt.calculation = calculate_gearys_c_for_project.applied_function
     LOOP
         
         -- Increment the task count
@@ -69,6 +72,7 @@ BEGIN
             WHERE ata.task_id = task.taskid AND ata.proj_id = task.proj_id AND avgpbpt.proj_id = task.proj_id
             AND (null_strategy != 'EXCLUDE' OR avgpbpt.avg_vertices IS NOT NULL)
             AND avgpbpt.building_source = calculate_gearys_c_for_project.building_source
+            AND avgpbpt.calculation = calculate_gearys_c_for_project.applied_function
         LOOP
             -- Calculate the total weight
             IF weight_strategy = 'BUILDING_COUNT' THEN

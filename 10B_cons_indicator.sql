@@ -1,6 +1,6 @@
 DO $$
 DECLARE
-    building_source TEXT := 'GOOGLE';
+    building_source TEXT := 'OSM';
 BEGIN
     -- Get 10% of the selected projects
 	CALL raise_notice('Selecting projects');
