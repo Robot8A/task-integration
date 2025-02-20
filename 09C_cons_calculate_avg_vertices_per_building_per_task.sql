@@ -107,46 +107,95 @@ BEGIN
         CREATE INDEX ON avg_vertices_per_building_per_task (calculation);
     ELSE
         IF source = 'OSM' THEN
-            WITH temp_buildings AS MATERIALIZED (
-                SELECT b.*
+            IF applied_function = 'AVG' THEN
+                WITH temp_buildings AS MATERIALIZED (
+                    SELECT b.*
+                    FROM temp_project_ids p
+                    JOIN buildings b ON b.project_id = p.proj_id
+                ), temp_grids AS MATERIALIZED (
+                    SELECT g.*
+                    FROM temp_project_ids p
+                    JOIN grids g ON g.project_id = p.proj_id
+                )
+                INSERT INTO avg_vertices_per_building_per_task (proj_id, taskid, avg_vertices, buildings_count, building_source, calculation)
+                SELECT p.proj_id, tg.taskid, AVG(ST_NPoints(tb.geom_utm) - 1) AS avg_vertices, COUNT(tb.*) AS buildings_count, source AS building_source, applied_function AS calculation
                 FROM temp_project_ids p
-                JOIN buildings b ON b.project_id = p.proj_id
-            ), temp_grids AS MATERIALIZED (
-                SELECT g.*
+                JOIN temp_grids tg ON tg.project_id = p.proj_id
+                LEFT JOIN temp_buildings tb ON tb.project_id = p.proj_id AND ST_Intersects(tb.geom_utm, tg.geom_utm)
+                GROUP BY p.proj_id, tg.taskid
+                ON CONFLICT (proj_id, taskid, building_source, calculation) DO UPDATE SET
+                    avg_vertices = EXCLUDED.avg_vertices,
+                    buildings_count = EXCLUDED.buildings_count,
+                    calculation = EXCLUDED.calculation;
+            ELSIF applied_function = 'MEDIAN' THEN
+                WITH temp_buildings AS MATERIALIZED (
+                    SELECT b.*
+                    FROM temp_project_ids p
+                    JOIN buildings b ON b.project_id = p.proj_id
+                ), temp_grids AS MATERIALIZED (
+                    SELECT g.*
+                    FROM temp_project_ids p
+                    JOIN grids g ON g.project_id = p.proj_id
+                )
+                INSERT INTO avg_vertices_per_building_per_task (proj_id, taskid, avg_vertices, buildings_count, building_source, calculation)
+                SELECT p.proj_id, tg.taskid, PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ST_NPoints(tb.geom_utm) - 1) AS avg_vertices, COUNT(tb.*) AS buildings_count, source AS building_source, applied_function AS calculation
                 FROM temp_project_ids p
-                JOIN grids g ON g.project_id = p.proj_id
-            )
-            INSERT INTO avg_vertices_per_building_per_task (proj_id, taskid, avg_vertices, buildings_count, building_source, calculation)
-            SELECT p.proj_id, tg.taskid, AVG(ST_NPoints(tb.geom_utm) - 1) AS avg_vertices, COUNT(tb.*) AS buildings_count, source AS building_source, applied_function AS calculation
-            FROM temp_project_ids p
-            JOIN temp_grids tg ON tg.project_id = p.proj_id
-            LEFT JOIN temp_buildings tb ON tb.project_id = p.proj_id AND ST_Intersects(tb.geom_utm, tg.geom_utm)
-            GROUP BY p.proj_id, tg.taskid
-            ON CONFLICT (proj_id, taskid, building_source, calculation) DO UPDATE SET
-                avg_vertices = EXCLUDED.avg_vertices,
-                buildings_count = EXCLUDED.buildings_count,
-                calculation = EXCLUDED.calculation;
+                JOIN temp_grids tg ON tg.project_id = p.proj_id
+                LEFT JOIN temp_buildings tb ON tb.project_id = p.proj_id AND ST_Intersects(tb.geom_utm, tg.geom_utm)
+                GROUP BY p.proj_id, tg.taskid
+                ON CONFLICT (proj_id, taskid, building_source, calculation) DO UPDATE SET
+                    avg_vertices = EXCLUDED.avg_vertices,
+                    buildings_count = EXCLUDED.buildings_count,
+                    calculation = EXCLUDED.calculation;
+            ELSE
+                RAISE EXCEPTION 'Unsupported applied_function: %', applied_function;
+            END IF;
         ELSE
-            WITH temp_buildings AS MATERIALIZED (
-                SELECT b.*
+            IF applied_function = 'AVG' THEN
+                WITH temp_buildings AS MATERIALIZED (
+                    SELECT b.*
+                    FROM temp_project_ids p
+                    JOIN google_buildings b ON b.project_id = p.proj_id
+                ), temp_grids AS MATERIALIZED (
+                    SELECT g.*
+                    FROM temp_project_ids p
+                    JOIN grids g ON g.project_id = p.proj_id
+                )
+                INSERT INTO avg_vertices_per_building_per_task (proj_id, taskid, avg_vertices, buildings_count, building_source, calculation)
+                SELECT p.proj_id, tg.taskid, AVG(ST_NPoints(tb.geom) - 1) AS avg_vertices, COUNT(tb.*) AS buildings_count, source AS building_source, applied_function AS calculation
                 FROM temp_project_ids p
-                JOIN google_buildings b ON b.project_id = p.proj_id
-            ), temp_grids AS MATERIALIZED (
-                SELECT g.*
+                JOIN temp_grids tg ON tg.project_id = p.proj_id
+                LEFT JOIN temp_buildings tb ON tb.project_id = p.proj_id AND ST_Intersects(tb.geom, tg.geom)
+                GROUP BY p.proj_id, tg.taskid
+                ON CONFLICT (proj_id, taskid, building_source, calculation)
+                DO UPDATE SET
+                    avg_vertices = EXCLUDED.avg_vertices,
+                    buildings_count = EXCLUDED.buildings_count,
+                    calculation = EXCLUDED.calculation;
+            ELSIF applied_function = 'MEDIAN' THEN
+                WITH temp_buildings AS MATERIALIZED (
+                    SELECT b.*
+                    FROM temp_project_ids p
+                    JOIN google_buildings b ON b.project_id = p.proj_id
+                ), temp_grids AS MATERIALIZED (
+                    SELECT g.*
+                    FROM temp_project_ids p
+                    JOIN grids g ON g.project_id = p.proj_id
+                )
+                INSERT INTO avg_vertices_per_building_per_task (proj_id, taskid, avg_vertices, buildings_count, building_source, calculation)
+                SELECT p.proj_id, tg.taskid, PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ST_NPoints(tb.geom) - 1) AS avg_vertices, COUNT(tb.*) AS buildings_count, source AS building_source, applied_function AS calculation
                 FROM temp_project_ids p
-                JOIN grids g ON g.project_id = p.proj_id
-            )
-            INSERT INTO avg_vertices_per_building_per_task (proj_id, taskid, avg_vertices, buildings_count, building_source, calculation)
-            SELECT p.proj_id, tg.taskid, AVG(ST_NPoints(tb.geom) - 1) AS avg_vertices, COUNT(tb.*) AS buildings_count, source AS building_source, applied_function AS calculation
-            FROM temp_project_ids p
-            JOIN temp_grids tg ON tg.project_id = p.proj_id
-            LEFT JOIN temp_buildings tb ON tb.project_id = p.proj_id AND ST_Intersects(tb.geom, tg.geom)
-            GROUP BY p.proj_id, tg.taskid
-            ON CONFLICT (proj_id, taskid, building_source, calculation)
-            DO UPDATE SET
-                avg_vertices = EXCLUDED.avg_vertices,
-                buildings_count = EXCLUDED.buildings_count,
-                calculation = EXCLUDED.calculation;
+                JOIN temp_grids tg ON tg.project_id = p.proj_id
+                LEFT JOIN temp_buildings tb ON tb.project_id = p.proj_id AND ST_Intersects(tb.geom, tg.geom)
+                GROUP BY p.proj_id, tg.taskid
+                ON CONFLICT (proj_id, taskid, building_source, calculation)
+                DO UPDATE SET
+                    avg_vertices = EXCLUDED.avg_vertices,
+                    buildings_count = EXCLUDED.buildings_count,
+                    calculation = EXCLUDED.calculation;
+            ELSE
+                RAISE EXCEPTION 'Unsupported applied_function: %', applied_function;
+            END IF;
         END IF;
     END IF;
     CALL raise_notice('Average number of vertices per building per task calculated');
