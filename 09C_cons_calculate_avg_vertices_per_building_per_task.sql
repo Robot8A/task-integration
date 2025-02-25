@@ -7,7 +7,7 @@ BEGIN
     RAISE NOTICE '-- 09C_cons_calculate_avg_vertices_per_building_per_task.sql --';
     RAISE NOTICE '---------------------------------------------------------------';
 
-    -- Get 10% of the selected projects
+    -- Get the selected projects
 	CALL raise_notice('Selecting projects');
     IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'temp_project_ids') THEN
         DROP TABLE temp_project_ids;
