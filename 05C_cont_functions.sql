@@ -117,7 +117,7 @@ BEGIN
 	END IF;
 
 	-- Determine the SRID of the original grids in UTM
-	SELECT get_utm_zone(project_id) INTO utm_epsg;
+	--SELECT get_utm_zone(project_id) INTO utm_epsg;
 
 	-- Save total number of nonconnecting nodes
 	WITH grids AS (

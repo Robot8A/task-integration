@@ -21,7 +21,7 @@ RETURNS TABLE(taskid INTEGER, geom GEOMETRY) AS $$
 BEGIN
 	IF do_mockup_grid THEN
 		RETURN QUERY
-		SELECT msg.taskid, mpg.geom FROM mockup_selected_grids AS msg
+		SELECT msg.taskid, msg.geom FROM mockup_grids AS msg
 		WHERE msg.project_id = get_grids_in_utm.project_id;
 	ELSE
 		RETURN QUERY

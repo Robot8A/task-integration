@@ -1,34 +1,52 @@
+-- CALCULATE THE CONTINUATION INDICATOR
 DO $$ 
 DECLARE
-    distances FLOAT[];
-    grid_types TEXT[];
+    distances FLOAT[] := ARRAY[5.0::FLOAT, 10.0::FLOAT, 15.0::FLOAT];
+    grid_types TEXT[] := ARRAY['MOCKUP'::TEXT, 'ORIGINAL'::TEXT];
     total_projects INT;
     processed_projects INT := 0;
     proj_ids INT[]; -- Array to store project IDs
     current_project_id INT; -- Variable to store individual project ID during the loop
 BEGIN
-    distances := ARRAY[5.0::FLOAT, 10.0::FLOAT, 15.0::FLOAT];
-    --- distances := array(SELECT generate_series(0.0, 100.0));
-    grid_types := ARRAY['MOCKUP-POLY'::TEXT, 'ORIGINAL'::TEXT];
+    RAISE NOTICE '----------------------------';
+    RAISE NOTICE '-- 10A_cont_indicator.sql --';
+    RAISE NOTICE '----------------------------';
+
+    -- Create the table if it doesn't exist
+    CREATE TABLE IF NOT EXISTS continuation (
+        project_id INT,
+        grid_type TEXT,
+        shrink_distance FLOAT,
+        shrink_type TEXT,
+        nodes_in_shrunk_grids INT,
+        nodes_in_border_buffer INT,
+        area_of_shrunk_grids FLOAT,
+        area_of_border_buffer FLOAT,
+        nodes_per_area_shrunk_grids FLOAT,
+        nodes_per_area_border_buffer FLOAT
+    );
     
-    SELECT ARRAY (
-        SELECT distinct(nn.project_id) AS ids
-        FROM nonconnecting_nodes AS nn
-        WHERE NOT EXISTS (
-            SELECT co.project_id
-            FROM continuation co
-            WHERE co.project_id = nn.project_id
-            AND grid_type = ANY(grid_types)
-            LIMIT 1
-            )
-        --- LIMIT 200 --- Uncomment this line to limit the number of projects to process and run batch by batch. Afterwards, it is needed to run the code multiple times to process all projects.
-    ) INTO proj_ids;
+    -- Get the selected projects
+	CALL raise_notice('Selecting projects');
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'temp_project_ids') THEN
+        DROP TABLE temp_project_ids;
+    END IF;
+	CREATE TEMP TABLE temp_project_ids AS
+	SELECT proj_id
+	FROM selected_projects
+    WHERE indicator_cont_dup = 9
+    AND typename = 'ROADS'
+	ORDER BY proj_id
+	;
+    --LIMIT (SELECT COUNT(*) * 0.0025 FROM selected_projects);
+	--LIMIT 1;
+	CALL raise_notice('Projects selected');
 
     -- Get the total number of projects
-    total_projects := array_length(proj_ids, 1);
+    total_projects := (SELECT COUNT(*) FROM temp_project_ids);
 
     -- Loop through the projects, and calculate continuation indicators
-    FOREACH current_project_id IN ARRAY proj_ids
+    FOREACH current_project_id IN ARRAY (SELECT array_agg(proj_id) FROM temp_project_ids)
     LOOP
         INSERT INTO continuation (project_id, grid_type, shrink_distance, shrink_type, nodes_in_shrunk_grids, nodes_in_border_buffer, area_of_shrunk_grids, area_of_border_buffer, nodes_per_area_shrunk_grids, nodes_per_area_border_buffer)
             SELECT current_project_id as project_id, grid_type, shrink_distance, shrink_type, nodes_in_shrunk_grids, nodes_in_border_buffer, area_of_shrunk_grids, area_of_border_buffer, nodes_per_area_shrunk_grids, nodes_per_area_border_buffer
@@ -53,4 +71,10 @@ BEGIN
         RAISE NOTICE 'Processed % of % projects (% %%)', processed_projects, total_projects, (processed_projects::FLOAT / total_projects::FLOAT) * 100;
         RAISE NOTICE '--------------------------------------------------';
     END LOOP;
+
+    -- Update the selected projects to indicate that they have been processed
+    UPDATE selected_projects
+    SET indicator_cont_dup = indicator_cont_dup + 1
+    WHERE proj_id IN (SELECT proj_id FROM temp_project_ids)
+    AND typename = 'ROADS';
 END $$;
