@@ -1,76 +1,70 @@
 -- Select the mockup grids to cover the desired percentage
 DROP FUNCTION IF EXISTS select_random_mockup_grids;
 CREATE OR REPLACE FUNCTION select_random_mockup_grids(percentage_covered DOUBLE PRECISION, project_id INTEGER)
-RETURNS TABLE(taskid INTEGER, geom GEOMETRY) AS $$
+RETURNS TABLE(taskid INTEGER, geom GEOMETRY) 
+AS $$
 DECLARE
-	task RECORD;
-	mockup_polygon RECORD;
     target_total_area DOUBLE PRECISION;
-    accumulated_area DOUBLE PRECISION := 0.0;
-    remaining_area DOUBLE PRECISION;
 BEGIN
     CALL raise_notice('Project ' || project_id || ' | Percentage ' || percentage_covered);
 
-    -- Select all distinct taskids for the project
-    FOR task IN SELECT * FROM grids g WHERE g.project_id = select_random_mockup_grids.project_id
-    LOOP
-        taskid := task.taskid;
+    -- Calculate the total area to be covered per taskid
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'temp_target_areas') THEN
+        DROP TABLE IF EXISTS temp_target_areas;
+    END IF;
+    CREATE TEMP TABLE temp_target_areas AS
+    SELECT g.taskid, (ST_Area(g.geom_utm) / 100.0 * percentage_covered) AS target_area
+    FROM grids g
+    WHERE g.project_id = select_random_mockup_grids.project_id;
 
-        -- Calculate the target total area
-        SELECT (ST_Area(task.geom_utm) / 100.0 * percentage_covered) INTO target_total_area;
-
-        -- Create a temporary table for the geometries
-        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'temp_mockup_grids') THEN
-            DROP TABLE temp_mockup_grids;
-        END IF;
-        CREATE TEMP TABLE temp_mockup_grids AS
-        SELECT mg.geom, ST_Area(mg.geom) AS area
+    -- Use a parallelizable query to select random geometries
+    RETURN QUERY
+    WITH random_mockup_grids AS (
+        SELECT mg.taskid, mg.geom, ST_Area(mg.geom) AS area
         FROM mockup_grids mg
-        WHERE mg.project_id = select_random_mockup_grids.project_id AND mg.taskid = task.taskid;
+        WHERE mg.project_id = select_random_mockup_grids.project_id
+        ORDER BY random()
+    ),
+    aggregated AS (
+        SELECT rmg.taskid, rmg.geom, SUM(rmg.area) OVER (PARTITION BY rmg.taskid ORDER BY random()) AS accumulated_area
+        FROM random_mockup_grids rmg
+        JOIN temp_target_areas tta ON rmg.taskid = tta.taskid
+    ),
+    selected AS (
+        -- Select all rows that do not exceed the target
+        SELECT a.*, tta.target_area FROM aggregated a
+        JOIN temp_target_areas tta ON a.taskid = tta.taskid
+        WHERE a.accumulated_area <= tta.target_area
 
-        accumulated_area := 0.0;
-        -- Iterate over the rows in the temporary table
-        FOR mockup_polygon IN
-            SELECT tmg.geom, tmg.area FROM temp_mockup_grids tmg
-            ORDER BY random() -- Shuffle the rows
-        LOOP
-            -- Add the area of the current geometry to the accumulated area
-            accumulated_area := accumulated_area + mockup_polygon.area;
+        UNION ALL
 
-            -- If we went over the target total area, clip the geometry to cover the remaining area
-            IF accumulated_area > target_total_area THEN
+        -- Add exactly one extra row that first exceeds the target
+        SELECT * FROM (SELECT a.*, tta.target_area FROM aggregated a
+        JOIN temp_target_areas tta ON a.taskid = tta.taskid
+        WHERE a.accumulated_area > tta.target_area
+        ORDER BY accumulated_area ASC
+        LIMIT 1) b
+    ),
+    final AS (
+        -- Clip the extra row to fit the target area
+        SELECT s.taskid,
+            CASE 
+                WHEN s.accumulated_area > s.target_area AND ST_Area(s.geom) > 0 THEN 
+                    ST_Scale(
+                        s.geom, 
+                        sqrt(GREATEST((s.target_area - (s.accumulated_area - ST_Area(s.geom))), 0) / ST_Area(s.geom)), 
+                        sqrt(GREATEST((s.target_area - (s.accumulated_area - ST_Area(s.geom))), 0) / ST_Area(s.geom))
+                    )
+                ELSE s.geom
+            END AS geom
+        FROM selected s
+    )
+    SELECT * FROM final;
 
-                -- Clip the geometry to cover the remaining area
-                remaining_area := target_total_area - (accumulated_area - mockup_polygon.area);
+    -- Cleanup
+    -- DROP TABLE IF EXISTS temp_target_areas;
+END $$ LANGUAGE plpgsql PARALLEL SAFE;
 
-                -- Scale the geometry to cover the remaining area
-                mockup_polygon.geom := ST_Scale(
-                                        mockup_polygon.geom,
-                                        sqrt(remaining_area / ST_Area(mockup_polygon.geom)),
-                                        sqrt(remaining_area / ST_Area(mockup_polygon.geom))
-                                    );
-
-
-                -- Handle ST_AdjustedBuffer failure
-                IF mockup_polygon.geom IS NULL THEN
-                    RAISE NOTICE 'Failed to clip geometry, returning original geometry';
-                END IF;
-
-                -- Set accumulated area to target total area
-                accumulated_area := target_total_area;
-            END IF;
-
-            -- Return the selected geometry
-            geom := mockup_polygon.geom;
-            RETURN NEXT;
-
-            -- Stop if target area is covered
-            EXIT WHEN accumulated_area >= target_total_area;
-        END LOOP;
-    END LOOP;
-    DROP TABLE IF EXISTS temp_mockup_grids;
-    RETURN;
-END $$ LANGUAGE plpgsql;
 
 -- POPULATE MOCKUP POLYGON GRIDS
 DO $$
