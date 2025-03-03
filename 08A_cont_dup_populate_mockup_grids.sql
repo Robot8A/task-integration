@@ -50,11 +50,7 @@ BEGIN
         SELECT s.taskid,
             CASE 
                 WHEN s.accumulated_area > s.target_area AND ST_Area(s.geom) > 0 THEN 
-                    ST_Scale(
-                        s.geom, 
-                        sqrt(GREATEST((s.target_area - (s.accumulated_area - ST_Area(s.geom))), 0) / ST_Area(s.geom)), 
-                        sqrt(GREATEST((s.target_area - (s.accumulated_area - ST_Area(s.geom))), 0) / ST_Area(s.geom))
-                    )
+                    shrink_geometry(s.geom, s.accumulated_area - s.target_area, true)
                 ELSE s.geom
             END AS geom
         FROM selected s
