@@ -8,11 +8,6 @@ DECLARE
     target_total_area DOUBLE PRECISION;
     accumulated_area DOUBLE PRECISION := 0.0;
     remaining_area DOUBLE PRECISION;
-	dilate_tolerance DOUBLE PRECISION;
-	dilate_tolerance_factor_of_area DOUBLE PRECISION := 20;
-	dilate_guess DOUBLE PRECISION;
-	dilate_guess_factor_of_area DOUBLE PRECISION := 50;
-	dilate_safety INTEGER := 1000000000;
 BEGIN
     CALL raise_notice('Project ' || project_id || ' | Percentage ' || percentage_covered);
 
@@ -44,21 +39,19 @@ BEGIN
 
             -- If we went over the target total area, clip the geometry to cover the remaining area
             IF accumulated_area > target_total_area THEN
-                -- Set tolerance and guess for ST_Dilate
-                dilate_tolerance := mockup_polygon.area / dilate_tolerance_factor_of_area;
-                dilate_guess := mockup_polygon.area / dilate_guess_factor_of_area;
 
                 -- Clip the geometry to cover the remaining area
                 remaining_area := target_total_area - (accumulated_area - mockup_polygon.area);
-                mockup_polygon.geom := ST_Dilate(
-                    mockup_polygon.geom,
-                    remaining_area / mockup_polygon.area,
-                    tol => dilate_tolerance,
-                    guess => dilate_guess,
-                    safety => dilate_safety
-                );
 
-                -- Handle ST_Dilate failure
+                -- Scale the geometry to cover the remaining area
+                mockup_polygon.geom := ST_Scale(
+                                        mockup_polygon.geom,
+                                        sqrt(remaining_area / ST_Area(mockup_polygon.geom)),
+                                        sqrt(remaining_area / ST_Area(mockup_polygon.geom))
+                                    );
+
+
+                -- Handle ST_AdjustedBuffer failure
                 IF mockup_polygon.geom IS NULL THEN
                     RAISE NOTICE 'Failed to clip geometry, returning original geometry';
                 END IF;
