@@ -155,7 +155,7 @@ BEGIN
 
     	-- Calculate number of nodes within the shrunk grids
     	WITH shrunk_grids AS (
-        	SELECT gsgiu.gid, gsgiu.geom
+        	SELECT gsgiu.taskid, gsgiu.geom
         	FROM get_shrunk_grids_in_utm(project_id, distance, grid_type, is_percentage) AS gsgiu
     	)
     	SELECT COUNT(*) INTO nodes_in_shrunk_grids
@@ -169,7 +169,7 @@ BEGIN
 
    	 	-- Calculate total area of the shrunk grids
 		WITH shrunk_grids AS (
-        	SELECT gsgiu.gid, gsgiu.geom
+        	SELECT gsgiu.taskid, gsgiu.geom
         	FROM get_shrunk_grids_in_utm(project_id, distance, grid_type, is_percentage) AS gsgiu
     	)
     	SELECT COALESCE(SUM(ST_Area(sg.geom)), 0) INTO area_of_shrunk_grids
