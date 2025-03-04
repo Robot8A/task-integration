@@ -78,4 +78,31 @@ BEGIN
     SET indicator_cont_dup = indicator_cont_dup + 1
     WHERE proj_id IN (SELECT proj_id FROM temp_project_ids)
     AND typename = 'ROADS';
+
+    CALL raise_notice('Cleanup');
+
+    -- Delete the rows for the nonconnecting nodes table for the selected projects
+    DELETE FROM nonconnecting_nodes
+    WHERE project_id IN (SELECT proj_id FROM temp_project_ids);
+
+    -- Delete the rows for the mockup grids and mockup selected grids tables for the selected projects where cont and dup indicators have already been calculated
+    DELETE FROM mockup_grids
+    WHERE project_id IN (
+        SELECT proj_id 
+        FROM selected_projects
+        GROUP BY proj_id
+        HAVING MIN(indicator_cont_dup) = 10;
+    );
+    DELETE FROM mockup_selected_grids
+    WHERE proj_id IN (
+        SELECT proj_id 
+        FROM selected_projects
+        GROUP BY proj_id
+        HAVING MIN(indicator_cont_dup) = 10;
+    );
+
+    -- Delete the temporary table
+    DROP TABLE temp_project_ids;
+
+    CALL raise_notice('Done');
 END $$;
