@@ -65,9 +65,10 @@ BEGIN
 		END IF;
 
 		RETURN QUERY
-		SELECT taskid, geom FROM mockup_selected_grids
-		WHERE proj_id = project_id
-		AND percentage_covered = shrink_distance;
+		SELECT msg.taskid, msg.geom
+		FROM mockup_selected_grids msg
+		WHERE msg.proj_id = project_id
+		AND msg.percentage_covered = shrink_distance;
 	ELSE
 		do_mockup_grid := FALSE;
 		RETURN QUERY

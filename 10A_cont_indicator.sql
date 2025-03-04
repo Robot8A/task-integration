@@ -25,6 +25,7 @@ BEGIN
         nodes_per_area_shrunk_grids FLOAT,
         nodes_per_area_border_buffer FLOAT
     );
+    ALTER TABLE continuation ADD PRIMARY KEY (project_id, grid_type, shrink_distance, shrink_type);
     
     -- Get the selected projects
 	CALL raise_notice('Selecting projects');

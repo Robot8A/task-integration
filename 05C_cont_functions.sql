@@ -154,8 +154,8 @@ BEGIN
 		nodes_per_area_border_buffer := NULL;
 
     	-- Calculate number of nodes within the shrunk grids
-    	WITH shrunk_grids AS (
-        	SELECT gsgiu.taskid, gsgiu.geom
+    	WITH shrunk_grids AS MATERIALIZED (
+        	SELECT gsgiu.geom
         	FROM get_shrunk_grids_in_utm(project_id, distance, grid_type, is_percentage) AS gsgiu
     	)
     	SELECT COUNT(*) INTO nodes_in_shrunk_grids
@@ -168,8 +168,8 @@ BEGIN
 		nodes_in_border_buffer := total_number_of_nonconnecting_nodes - nodes_in_shrunk_grids;
 
    	 	-- Calculate total area of the shrunk grids
-		WITH shrunk_grids AS (
-        	SELECT gsgiu.taskid, gsgiu.geom
+		WITH shrunk_grids AS MATERIALIZED (
+        	SELECT gsgiu.geom
         	FROM get_shrunk_grids_in_utm(project_id, distance, grid_type, is_percentage) AS gsgiu
     	)
     	SELECT COALESCE(SUM(ST_Area(sg.geom)), 0) INTO area_of_shrunk_grids
