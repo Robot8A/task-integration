@@ -314,6 +314,7 @@ RETURNS geometry AS $$
 DECLARE
     scaled_geom geometry;
     scale_factor double precision;
+	_safety INTEGER := 1000000000;
 BEGIN
 
 	IF shrink_value = 0 OR ST_Area(geom) = 0 THEN
@@ -329,7 +330,7 @@ BEGIN
         scale_factor := 1 - (shrink_value / 100.0);
         
         -- Dilate back the geometry by the scale factor
-        scaled_geom := ST_Dilate(geom, scale_factor);
+        scaled_geom := ST_Dilate(geom, scale_factor, safety => _safety);
     ELSE
         -- Apply the negative buffer to shrink the geometry by a fixed distance
         scaled_geom := ST_Buffer(geom, -shrink_value);
