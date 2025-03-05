@@ -104,7 +104,6 @@ DECLARE
 	nodes_per_area_border_buffer DOUBLE PRECISION;
 	total_number_of_nonconnecting_nodes BIGINT;
 	total_area_of_grids DOUBLE PRECISION;
-	utm_epsg INTEGER;
 	num_distances INT;
 BEGIN
 
@@ -115,9 +114,6 @@ BEGIN
 	ELSE
 		do_mockup_grid := FALSE;
 	END IF;
-
-	-- Determine the SRID of the original grids in UTM
-	--SELECT get_utm_zone(project_id) INTO utm_epsg;
 
 	-- Save total number of nonconnecting nodes
 	WITH grids AS (
@@ -153,11 +149,13 @@ BEGIN
 		nodes_per_area_shrunk_grids := NULL;
 		nodes_per_area_border_buffer := NULL;
 
+		-- Create the materialized view for the shrunk grids
+		DROP TABLE IF EXISTS shrunk_grids;
+		CREATE TEMP TABLE shrunk_grids AS
+		SELECT gsgiu.geom
+		FROM get_shrunk_grids_in_utm(project_id, distance, grid_type, is_percentage) AS gsgiu;
+
     	-- Calculate number of nodes within the shrunk grids
-    	WITH shrunk_grids AS MATERIALIZED (
-        	SELECT gsgiu.geom
-        	FROM get_shrunk_grids_in_utm(project_id, distance, grid_type, is_percentage) AS gsgiu
-    	)
     	SELECT COUNT(*) INTO nodes_in_shrunk_grids
     	FROM nonconnecting_nodes AS nn
     	JOIN shrunk_grids AS sg
@@ -168,10 +166,6 @@ BEGIN
 		nodes_in_border_buffer := total_number_of_nonconnecting_nodes - nodes_in_shrunk_grids;
 
    	 	-- Calculate total area of the shrunk grids
-		WITH shrunk_grids AS MATERIALIZED (
-        	SELECT gsgiu.geom
-        	FROM get_shrunk_grids_in_utm(project_id, distance, grid_type, is_percentage) AS gsgiu
-    	)
     	SELECT COALESCE(SUM(ST_Area(sg.geom)), 0) INTO area_of_shrunk_grids
     	FROM shrunk_grids AS sg;
 
@@ -192,6 +186,9 @@ BEGIN
         	ELSE
             	0
         	END;
+
+		-- Cleanup
+		DROP TABLE IF EXISTS shrunk_grids;
 
     	-- Return results for the current shrink distance
     	RETURN QUERY

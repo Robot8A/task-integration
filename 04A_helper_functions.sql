@@ -65,10 +65,19 @@ BEGIN
 		END IF;
 
 		RETURN QUERY
-		SELECT msg.taskid, msg.geom
-		FROM mockup_selected_grids msg
-		WHERE msg.proj_id = project_id
-		AND msg.percentage_covered = shrink_distance;
+		WITH utm_grids AS (
+			SELECT ggiu.taskid, ggiu.geom
+			FROM get_grids_in_utm(project_id, FALSE) AS ggiu
+		),
+		mockup_grids AS (
+			SELECT msg.taskid, msg.geom
+			FROM mockup_selected_grids msg
+			WHERE msg.proj_id = project_id
+			AND msg.percentage_covered = shrink_distance
+		)
+		SELECT ug.taskid, ST_Difference(ug.geom, mg.geom) AS geom
+		FROM utm_grids ug
+		JOIN mockup_grids mg ON ug.taskid = mg.taskid;
 	ELSE
 		do_mockup_grid := FALSE;
 		RETURN QUERY
