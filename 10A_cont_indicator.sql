@@ -91,14 +91,14 @@ BEGIN
         SELECT proj_id 
         FROM selected_projects
         GROUP BY proj_id
-        HAVING MIN(indicator_cont_dup) = 10;
+        HAVING MIN(indicator_cont_dup) = 10
     );
     DELETE FROM mockup_selected_grids
     WHERE proj_id IN (
         SELECT proj_id 
         FROM selected_projects
         GROUP BY proj_id
-        HAVING MIN(indicator_cont_dup) = 10;
+        HAVING MIN(indicator_cont_dup) = 10
     );
 
     -- Delete the temporary table

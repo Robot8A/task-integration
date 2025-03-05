@@ -150,7 +150,9 @@ BEGIN
 		nodes_per_area_border_buffer := NULL;
 
 		-- Create the materialized view for the shrunk grids
-		DROP TABLE IF EXISTS shrunk_grids;
+		IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'shrunk_grids') THEN
+			DROP TABLE shrunk_grids;
+		END IF;
 		CREATE TEMP TABLE shrunk_grids AS
 		SELECT gsgiu.geom
 		FROM get_shrunk_grids_in_utm(project_id, distance, grid_type, is_percentage) AS gsgiu;
