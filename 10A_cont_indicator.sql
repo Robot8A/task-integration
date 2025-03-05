@@ -13,20 +13,22 @@ BEGIN
     RAISE NOTICE '----------------------------';
 
     -- Create the table if it doesn't exist
-    CREATE TABLE IF NOT EXISTS continuation (
-        project_id INT,
-        grid_type TEXT,
-        shrink_distance FLOAT,
-        shrink_type TEXT,
-        nodes_in_shrunk_grids INT,
-        nodes_in_border_buffer INT,
-        area_of_shrunk_grids FLOAT,
-        area_of_border_buffer FLOAT,
-        nodes_per_area_shrunk_grids FLOAT,
-        nodes_per_area_border_buffer FLOAT
-    );
-    ALTER TABLE continuation ADD PRIMARY KEY (project_id, grid_type, shrink_distance, shrink_type);
-    
+    IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'continuation') THEN
+        CREATE TABLE continuation (
+            project_id INT,
+            grid_type TEXT,
+            shrink_distance FLOAT,
+            shrink_type TEXT,
+            nodes_in_shrunk_grids INT,
+            nodes_in_border_buffer INT,
+            area_of_shrunk_grids FLOAT,
+            area_of_border_buffer FLOAT,
+            nodes_per_area_shrunk_grids FLOAT,
+            nodes_per_area_border_buffer FLOAT
+        );
+        ALTER TABLE continuation ADD PRIMARY KEY (project_id, grid_type, shrink_distance, shrink_type);
+    END IF;
+
     -- Get the selected projects
 	CALL raise_notice('Selecting projects');
     IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'temp_project_ids') THEN

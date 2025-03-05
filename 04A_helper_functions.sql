@@ -70,7 +70,7 @@ BEGIN
 			FROM get_grids_in_utm(project_id, FALSE) AS ggiu
 		),
 		mockup_grids AS (
-			SELECT msg.taskid, ST_Union(msg.geom)
+			SELECT msg.taskid, ST_Union(msg.geom) AS geom
 			FROM mockup_selected_grids msg
 			WHERE msg.proj_id = project_id
 			AND msg.percentage_covered = shrink_distance
@@ -324,8 +324,9 @@ RETURNS geometry AS $$
 DECLARE
     scaled_geom geometry;
     scale_factor double precision;
-	_tol FLOAT := 0.0025;
-	_safety INTEGER := 2000000000;
+	_tol FLOAT := 0.0005;
+	_guess FLOAT := -0.001;
+	_safety BIGINT := 9223372036854775807;
 BEGIN
 
 	IF shrink_value = 0 OR ST_Area(geom) = 0 THEN
@@ -341,7 +342,7 @@ BEGIN
         scale_factor := 1 - (shrink_value / 100.0);
         
         -- Dilate back the geometry by the scale factor
-        scaled_geom := ST_Dilate(geom, scale_factor, tol => _tol, safety => _safety);
+        scaled_geom := ST_Dilate(geom, scale_factor, tol => sqrt(ST_Area(geom)) * _tol, guess => sqrt(ST_Area(geom)) * _guess, safety => _safety);
     ELSE
         -- Apply the negative buffer to shrink the geometry by a fixed distance
         scaled_geom := ST_Buffer(geom, -shrink_value);
