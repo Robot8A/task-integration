@@ -70,10 +70,11 @@ BEGIN
 			FROM get_grids_in_utm(project_id, FALSE) AS ggiu
 		),
 		mockup_grids AS (
-			SELECT msg.taskid, msg.geom
+			SELECT msg.taskid, ST_Union(msg.geom)
 			FROM mockup_selected_grids msg
 			WHERE msg.proj_id = project_id
 			AND msg.percentage_covered = shrink_distance
+			GROUP BY msg.taskid
 		)
 		SELECT ug.taskid, ST_Difference(ug.geom, mg.geom) AS geom
 		FROM utm_grids ug
