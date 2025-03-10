@@ -326,7 +326,7 @@ RETURNS GEOMETRY AS $$
 DECLARE
     scaled_geom GEOMETRY;
     scale_factor DOUBLE PRECISION;
-	_tol FLOAT := 0.0001;
+	_tol FLOAT := 0.00005;
 	_guess FLOAT := 0.05;
 	_safety BIGINT := 9223372036854775807;
 BEGIN

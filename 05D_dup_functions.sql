@@ -37,8 +37,8 @@ BEGIN
 
     RETURN QUERY
     WITH buildings AS (
-        SELECT bu.osm_id, bu.geom AS geom
-        FROM buildings_utm bu
+        SELECT bu.osm_id, bu.geom_utm AS geom
+        FROM buildings bu
         WHERE bu.project_id = get_duplicated_buildings.project_id
     ),
     filtered_buildings AS (
@@ -111,7 +111,7 @@ BEGIN
 
 	-- Save total number of duplicated buildings
 	WITH grids AS (
-        	SELECT ggiu.gid, ggiu.geom
+        	SELECT ggiu.geom
         	FROM get_grids_in_utm(project_id) AS ggiu
 	)
 	SELECT COUNT(*) INTO total_number_of_duplicated_buildings
