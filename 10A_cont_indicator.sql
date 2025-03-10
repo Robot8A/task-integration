@@ -1,7 +1,7 @@
 -- CALCULATE THE CONTINUATION INDICATOR
 DO $$ 
 DECLARE
-    distances FLOAT[] := ARRAY[5.0::FLOAT, 10.0::FLOAT, 15.0::FLOAT];
+    distances DOUBLE PRECISION[] := ARRAY[5.0::DOUBLE PRECISION, 10.0::DOUBLE PRECISION, 15.0::DOUBLE PRECISION];
     grid_types TEXT[] := ARRAY['MOCKUP'::TEXT, 'ORIGINAL'::TEXT];
     total_projects INT;
     processed_projects INT := 0;
@@ -17,14 +17,14 @@ BEGIN
         CREATE TABLE continuation (
             project_id INT,
             grid_type TEXT,
-            shrink_distance FLOAT,
+            shrink_distance DOUBLE PRECISION,
             shrink_type TEXT,
             nodes_in_shrunk_grids INT,
             nodes_in_border_buffer INT,
-            area_of_shrunk_grids FLOAT,
-            area_of_border_buffer FLOAT,
-            nodes_per_area_shrunk_grids FLOAT,
-            nodes_per_area_border_buffer FLOAT
+            area_of_shrunk_grids DOUBLE PRECISION,
+            area_of_border_buffer DOUBLE PRECISION,
+            nodes_per_area_shrunk_grids DOUBLE PRECISION,
+            nodes_per_area_border_buffer DOUBLE PRECISION
         );
         ALTER TABLE continuation ADD PRIMARY KEY (project_id, grid_type, shrink_distance, shrink_type);
     END IF;

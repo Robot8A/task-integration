@@ -325,8 +325,8 @@ CREATE FUNCTION shrink_geometry(
 RETURNS GEOMETRY AS $$
 DECLARE
     scaled_geom GEOMETRY;
-    scale_factor FLOAT;
-	_tol FLOAT := 0.005;
+    scale_factor DOUBLE PRECISION;
+	_tol FLOAT := 0.0001;
 	_guess FLOAT := 0.05;
 	_safety BIGINT := 9223372036854775807;
 BEGIN
@@ -336,12 +336,12 @@ BEGIN
 	END IF;
 
     IF is_percentage THEN
-		IF shrink_value = 100 THEN
+		IF shrink_value = 100.0 THEN
 			RETURN ST_MakeEmpty();
 		END IF;
 
         -- Convert percentage to a factor between 0 and 1
-        scale_factor := 1 - (shrink_value / 100.0);
+        scale_factor := (1.0 - (shrink_value / 100.0))::FLOAT;
         
         -- Dilate back the geometry by the scale factor
         scaled_geom := ST_Dilate(geom, scale_factor, tol => _tol, guess => sqrt(ST_Area(geom)) * _guess, safety => _safety);
@@ -418,144 +418,144 @@ BEGIN
 END $$ LANGUAGE plpgsql PARALLEL SAFE;
 
 -- Divides a grid cell into subpolygons with a target area, with n being the number of points created for the random polygons and m being the target area percentage
-DROP FUNCTION IF EXISTS divide_polygon;
-CREATE OR REPLACE FUNCTION divide_polygon(input_geom GEOMETRY, n INTEGER, m DOUBLE PRECISION)
-RETURNS TABLE(geom GEOMETRY) AS $$
-DECLARE
-    valid_geom GEOMETRY;
-	total_area NUMERIC;
-    target_total_area NUMERIC;
-    accumulated_area NUMERIC := 0;
-    remaining_area NUMERIC;
-    selected_geom GEOMETRY;
-	selected_geom_old GEOMETRY;
-    voronoi_geoms GEOMETRY[];
-    voronoi_ids INTEGER[];
-    i INTEGER;
-    j INTEGER;
-    temp_geom GEOMETRY;
-    temp_id INTEGER;
-	dilate_tolerance DOUBLE PRECISION;
-	dilate_tolerance_factor_of_area DOUBLE PRECISION := 2000;
-	dilate_guess DOUBLE PRECISION;
-	dilate_guess_factor_of_area DOUBLE PRECISION := 5000;
-	dilate_safety INTEGER := 1000000000;
-BEGIN
+-- DROP FUNCTION IF EXISTS divide_polygon;
+-- CREATE OR REPLACE FUNCTION divide_polygon(input_geom GEOMETRY, n INTEGER, m DOUBLE PRECISION)
+-- RETURNS TABLE(geom GEOMETRY) AS $$
+-- DECLARE
+--     valid_geom GEOMETRY;
+-- 	total_area NUMERIC;
+--     target_total_area NUMERIC;
+--     accumulated_area NUMERIC := 0;
+--     remaining_area NUMERIC;
+--     selected_geom GEOMETRY;
+-- 	selected_geom_old GEOMETRY;
+--     voronoi_geoms GEOMETRY[];
+--     voronoi_ids INTEGER[];
+--     i INTEGER;
+--     j INTEGER;
+--     temp_geom GEOMETRY;
+--     temp_id INTEGER;
+-- 	dilate_tolerance DOUBLE PRECISION;
+-- 	dilate_tolerance_factor_of_area DOUBLE PRECISION := 2000;
+-- 	dilate_guess DOUBLE PRECISION;
+-- 	dilate_guess_factor_of_area DOUBLE PRECISION := 5000;
+-- 	dilate_safety INTEGER := 1000000000;
+-- BEGIN
 
-	-- Check if the input geometry is valid, otherwise fix it
-	IF ST_IsValid(input_geom) THEN
-			valid_geom := input_geom;
-	ELSE
-		RAISE NOTICE 'Input geometry is invalid, fixing geometry';
-		valid_geom := ST_MakeValid(input_geom);
+-- 	-- Check if the input geometry is valid, otherwise fix it
+-- 	IF ST_IsValid(input_geom) THEN
+-- 			valid_geom := input_geom;
+-- 	ELSE
+-- 		RAISE NOTICE 'Input geometry is invalid, fixing geometry';
+-- 		valid_geom := ST_MakeValid(input_geom);
 
-		IF GeometryType(valid_geom) = 'GEOMETRYCOLLECTION' THEN
-            -- Extract only the Polygon or MultiPolygon geometries from the collection
-            valid_geom := (
-                SELECT ST_Collect(valid_geoms.geom) -- Re-collect into a single geometry
-                FROM (
-                    SELECT dumped_geom.geom
-                    FROM ST_Dump(valid_geom) AS dumped_geom
-                    WHERE GeometryType(dumped_geom.geom) IN ('POLYGON', 'MULTIPOLYGON')
-                ) AS valid_geoms
-            );
-        END IF;
-	END IF;
-	-- Step 1: Calculate the total area of the input polygon
-	total_area := ST_Area(valid_geom);
+-- 		IF GeometryType(valid_geom) = 'GEOMETRYCOLLECTION' THEN
+--             -- Extract only the Polygon or MultiPolygon geometries from the collection
+--             valid_geom := (
+--                 SELECT ST_Collect(valid_geoms.geom) -- Re-collect into a single geometry
+--                 FROM (
+--                     SELECT dumped_geom.geom
+--                     FROM ST_Dump(valid_geom) AS dumped_geom
+--                     WHERE GeometryType(dumped_geom.geom) IN ('POLYGON', 'MULTIPOLYGON')
+--                 ) AS valid_geoms
+--             );
+--         END IF;
+-- 	END IF;
+-- 	-- Step 1: Calculate the total area of the input polygon
+-- 	total_area := ST_Area(valid_geom);
 
-	IF total_area = 0 THEN
-		RAISE NOTICE 'Input geometry has zero area';
-		RETURN;
-	END IF;
+-- 	IF total_area = 0 THEN
+-- 		RAISE NOTICE 'Input geometry has zero area';
+-- 		RETURN;
+-- 	END IF;
 
-	-- Set tolerance and guess for ST_Dilate
-	dilate_tolerance := total_area / dilate_tolerance_factor_of_area;
-	dilate_guess := total_area / dilate_guess_factor_of_area;
+-- 	-- Set tolerance and guess for ST_Dilate
+-- 	dilate_tolerance := total_area / dilate_tolerance_factor_of_area;
+-- 	dilate_guess := total_area / dilate_guess_factor_of_area;
 
-    -- Step 2: Determine the target total area for all subpolygons combined
-    target_total_area := (m / 100.0) * total_area;
+--     -- Step 2: Determine the target total area for all subpolygons combined
+--     target_total_area := (m / 100.0) * total_area;
 
-    -- Step 3: Generate Voronoi polygons from random points within the polygon
-    SELECT array_agg(clipped_voronoi.geom) INTO voronoi_geoms
-    FROM (
-        SELECT ST_Intersection(v.geom, valid_geom) AS geom
-        FROM (
-            SELECT (ST_Dump(ST_VoronoiPolygons(ST_Collect(random_points.geom)))).geom AS geom
-            FROM (SELECT ST_GeneratePoints(valid_geom, n) AS geom) AS random_points
-        ) AS v
-    ) AS clipped_voronoi;
+--     -- Step 3: Generate Voronoi polygons from random points within the polygon
+--     SELECT array_agg(clipped_voronoi.geom) INTO voronoi_geoms
+--     FROM (
+--         SELECT ST_Intersection(v.geom, valid_geom) AS geom
+--         FROM (
+--             SELECT (ST_Dump(ST_VoronoiPolygons(ST_Collect(random_points.geom)))).geom AS geom
+--             FROM (SELECT ST_GeneratePoints(valid_geom, n) AS geom) AS random_points
+--         ) AS v
+--     ) AS clipped_voronoi;
 
-    -- Initialize an array of indices for shuffling
-    SELECT array(SELECT generate_series(1, array_length(voronoi_geoms, 1))) INTO voronoi_ids;
+--     -- Initialize an array of indices for shuffling
+--     SELECT array(SELECT generate_series(1, array_length(voronoi_geoms, 1))) INTO voronoi_ids;
 
-	IF voronoi_ids IS NOT NULL AND array_length(voronoi_ids, 1) > 0 THEN
-	    FOR i IN array_lower(voronoi_ids, 1) .. array_upper(voronoi_ids, 1) LOOP
-			j := floor(random() * (array_length(voronoi_ids, 1) - i + 1) + i)::integer;
-			temp_id := voronoi_ids[i];
-			voronoi_ids[i] := voronoi_ids[j];
-			voronoi_ids[j] := temp_id;
-		END LOOP;
+-- 	IF voronoi_ids IS NOT NULL AND array_length(voronoi_ids, 1) > 0 THEN
+-- 	    FOR i IN array_lower(voronoi_ids, 1) .. array_upper(voronoi_ids, 1) LOOP
+-- 			j := floor(random() * (array_length(voronoi_ids, 1) - i + 1) + i)::integer;
+-- 			temp_id := voronoi_ids[i];
+-- 			voronoi_ids[i] := voronoi_ids[j];
+-- 			voronoi_ids[j] := temp_id;
+-- 		END LOOP;
 
-		-- Step 4: Iterate through shuffled Voronoi polygons
-		i := 1;
-		WHILE i <= array_length(voronoi_ids, 1) AND accumulated_area < target_total_area LOOP
-			selected_geom := voronoi_geoms[voronoi_ids[i]];
-			accumulated_area := accumulated_area + ST_Area(selected_geom);
+-- 		-- Step 4: Iterate through shuffled Voronoi polygons
+-- 		i := 1;
+-- 		WHILE i <= array_length(voronoi_ids, 1) AND accumulated_area < target_total_area LOOP
+-- 			selected_geom := voronoi_geoms[voronoi_ids[i]];
+-- 			accumulated_area := accumulated_area + ST_Area(selected_geom);
 
-			-- If the accumulated area exceeds the target, clip the last polygon to fit the exact area
-			IF accumulated_area > target_total_area THEN
-				selected_geom_old := selected_geom;
-				selected_geom := ST_Dilate(
-					selected_geom_old,
-					(target_total_area - (accumulated_area - ST_Area(selected_geom_old))) / ST_Area(selected_geom_old),
-					tol => dilate_tolerance,
-					guess => dilate_guess,
-					safety => dilate_safety
-					);
+-- 			-- If the accumulated area exceeds the target, clip the last polygon to fit the exact area
+-- 			IF accumulated_area > target_total_area THEN
+-- 				selected_geom_old := selected_geom;
+-- 				selected_geom := ST_Dilate(
+-- 					selected_geom_old,
+-- 					(target_total_area - (accumulated_area - ST_Area(selected_geom_old))) / ST_Area(selected_geom_old),
+-- 					tol => dilate_tolerance,
+-- 					guess => dilate_guess,
+-- 					safety => dilate_safety
+-- 					);
 
-				-- If ST_Dilate fails, return the original geometry
-				IF selected_geom IS NULL THEN
-					selected_geom := selected_geom_old;
-					RAISE NOTICE 'Failed to dilate geometry, returning original geometry';
-				END IF;
+-- 				-- If ST_Dilate fails, return the original geometry
+-- 				IF selected_geom IS NULL THEN
+-- 					selected_geom := selected_geom_old;
+-- 					RAISE NOTICE 'Failed to dilate geometry, returning original geometry';
+-- 				END IF;
 
-				accumulated_area := target_total_area;
-			END IF;
+-- 				accumulated_area := target_total_area;
+-- 			END IF;
 
-			-- Return the selected geometry as a subpolygon
-			geom := selected_geom;
-			RETURN NEXT;
+-- 			-- Return the selected geometry as a subpolygon
+-- 			geom := selected_geom;
+-- 			RETURN NEXT;
 	
 
-			-- Increment index
-			i := i + 1;
-		END LOOP;
-	END IF;
-END $$ LANGUAGE plpgsql PARALLEL SAFE;
+-- 			-- Increment index
+-- 			i := i + 1;
+-- 		END LOOP;
+-- 	END IF;
+-- END $$ LANGUAGE plpgsql PARALLEL SAFE;
 
--- Generates mockup polygon grid with project_id
-DROP FUNCTION IF EXISTS generate_mockup_polygon_grid;
-CREATE OR REPLACE FUNCTION generate_mockup_polygon_grid(project_id INT, percentage_covered DOUBLE PRECISION)
-RETURNS TABLE (taskid INT, geom GEOMETRY) AS $$
-DECLARE
-	dividing_factor INTEGER := 25;
-BEGIN
-    -- Return a combined result set from divide_polygon for all grids
-    RETURN QUERY
-    SELECT
-        subpolygon_lateral.taskid AS taskid,
-        subpolygon_lateral.geom AS geom
-    FROM get_grids_in_utm(project_id, FALSE) AS grid,
-    LATERAL (
-        SELECT subpolygon.geom, grid.taskid
-        FROM divide_polygon(
-            input_geom => grid.geom,
-            n => dividing_factor,
-            m => percentage_covered
-        ) AS subpolygon
-    ) AS subpolygon_lateral;
-END $$ LANGUAGE plpgsql PARALLEL SAFE;
+-- -- Generates mockup polygon grid with project_id
+-- DROP FUNCTION IF EXISTS generate_mockup_polygon_grid;
+-- CREATE OR REPLACE FUNCTION generate_mockup_polygon_grid(project_id INT, percentage_covered DOUBLE PRECISION)
+-- RETURNS TABLE (taskid INT, geom GEOMETRY) AS $$
+-- DECLARE
+-- 	dividing_factor INTEGER := 25;
+-- BEGIN
+--     -- Return a combined result set from divide_polygon for all grids
+--     RETURN QUERY
+--     SELECT
+--         subpolygon_lateral.taskid AS taskid,
+--         subpolygon_lateral.geom AS geom
+--     FROM get_grids_in_utm(project_id, FALSE) AS grid,
+--     LATERAL (
+--         SELECT subpolygon.geom, grid.taskid
+--         FROM divide_polygon(
+--             input_geom => grid.geom,
+--             n => dividing_factor,
+--             m => percentage_covered
+--         ) AS subpolygon
+--     ) AS subpolygon_lateral;
+-- END $$ LANGUAGE plpgsql PARALLEL SAFE;
 
 -----------
 -- OTHER --
