@@ -211,7 +211,7 @@ CREATE FUNCTION continuation(
 	project_ids INT[],
 	shrink_distances DOUBLE PRECISION[],
 	grid_types TEXT[] DEFAULT ARRAY['ORIGINAL']::TEXT[],
-	shrink_types TEXT[] DEFAULT ARRAY['distance']::TEXT[]
+	shrink_types TEXT[] DEFAULT ARRAY['percentage']::TEXT[]
 )
 RETURNS TABLE(
 	project_id INT,
