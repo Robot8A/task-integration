@@ -45,6 +45,9 @@ BEGIN
     --LIMIT 1;
     CALL raise_notice('Projects selected');
 
+    -- Get the total number of projects
+    total_projects := (SELECT COUNT(*) FROM temp_project_ids);
+
     -- Loop through the projects, and calculate duplication indicators
     FOREACH current_project_id IN ARRAY (SELECT array_agg(proj_id) FROM temp_project_ids)
     LOOP
