@@ -30,23 +30,16 @@ CREATE FUNCTION get_duplicated_buildings(
 )
 RETURNS TABLE(building_a_id INT, building_b_id INT, intersection_geom GEOMETRY) AS $$
 DECLARE
-    utm_epsg INT;
 BEGIN
-    -- Determine the SRID of the original grids in UTM
-	SELECT get_utm_zone(project_id) INTO utm_epsg;
-
     RETURN QUERY
-    WITH buildings AS (
-        SELECT bu.osm_id, bu.geom_utm AS geom
-        FROM buildings bu
-        WHERE bu.project_id = get_duplicated_buildings.project_id
-    ),
-    filtered_buildings AS (
-        SELECT a.osm_id AS building_a_id, a.geom AS building_a_geom, b.osm_id AS building_b_id, b.geom AS building_b_geom, ST_Intersection(a.geom, b.geom) AS intersection_geom
+    WITH filtered_buildings AS (
+        SELECT a.osm_id AS building_a_id, a.geom_utm AS building_a_geom, b.osm_id AS building_b_id, b.geom_utm AS building_b_geom, ST_Intersection(a.geom_utm, b.geom_utm) AS intersection_geom
         FROM buildings a
-        JOIN buildings b ON a.geom && b.geom  -- Use bounding box intersection, to reduce complexity
-        WHERE a.osm_id < b.osm_id
-        AND ST_Intersects(a.geom, b.geom)
+        JOIN buildings b ON a.geom_utm && b.geom_utm  -- Use bounding box intersection, to reduce complexity
+		WHERE a.project_id = get_duplicated_buildings.project_id
+		AND b.project_id = get_duplicated_buildings.project_id
+        AND a.osm_id < b.osm_id
+        AND ST_Intersects(a.geom_utm, b.geom_utm)
     )
     SELECT fb.building_a_id, fb.building_b_id, fb.intersection_geom
     FROM filtered_buildings fb
