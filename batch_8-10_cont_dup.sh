@@ -8,6 +8,8 @@ user=postgres
 export PGPASSWORD=postgres
 
 loop_count=0
+cont_finished=false
+dup_finished=false
 
 # Do an infinite loop
 while true; do
@@ -29,16 +31,27 @@ while true; do
 
     # 10A
     echo "$(date) | EXECUTING SQL SCRIPT 10A_cont_indicator.sql..."
-    psql -h $host -p $port -d $database -U $user -f ./10A_cont_indicator.sql
+    result=$(psql -h $host -p $port -d $database -U $user -t -c "\i ./10A_cont_indicator.sql")
+    if [ -z "$result" ]; then
+        cont_finished=true
+    fi
 
     # 10B
     echo "$(date) | EXECUTING SQL SCRIPT 10B_dup_indicator.sql..."
-    psql -h $host -p $port -d $database -U $user -f ./10B_dup_indicator.sql
+    result=$(psql -h $host -p $port -d $database -U $user -f ./10B_dup_indicator.sql)
+    if [ -z "$result" ]; then
+        dup_finished=true
+    fi
 
     loop_count=$((loop_count+1))
 
-    if [ "$loop_count" -ge 100 ]; then
-        echo "Reached loop count limit. Exiting..."
+    if [[ "$cont_finished" == "true" && "$dup_finished" == "true" ]]; then
+        echo "Finished processing all data."
+        break
+    fi
+
+    if [[ "$loop_count" -eq 10000 ]]; then
+        echo "Loop count reached the limit. Exiting..."
         break
     fi
 done
