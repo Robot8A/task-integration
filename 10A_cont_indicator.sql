@@ -1,8 +1,10 @@
 -- CALCULATE THE CONTINUATION INDICATOR
 DO $$ 
 DECLARE
-    distances DOUBLE PRECISION[] := ARRAY[5.0::DOUBLE PRECISION, 10.0::DOUBLE PRECISION, 15.0::DOUBLE PRECISION];
-    grid_types TEXT[] := ARRAY['MOCKUP'::TEXT, 'ORIGINAL'::TEXT];
+    --distances DOUBLE PRECISION[] := ARRAY[5.0::DOUBLE PRECISION, 10.0::DOUBLE PRECISION, 15.0::DOUBLE PRECISION];
+    distances DOUBLE PRECISION[] := ARRAY(SELECT i::DOUBLE PRECISION FROM generate_series(1, 100) AS i);
+    --grid_types TEXT[] := ARRAY['MOCKUP'::TEXT, 'ORIGINAL'::TEXT];
+    grid_types TEXT[] := ARRAY['ORIGINAL'::TEXT];
     total_projects INT;
     processed_projects INT := 0;
     proj_ids INT[]; -- Array to store project IDs
@@ -88,20 +90,22 @@ BEGIN
     WHERE project_id IN (SELECT proj_id FROM temp_project_ids);
 
     -- Delete the rows for the mockup grids and mockup selected grids tables for the selected projects where cont and dup indicators have already been calculated
-    DELETE FROM mockup_grids
-    WHERE project_id IN (
-        SELECT proj_id 
-        FROM selected_projects
-        GROUP BY proj_id
-        HAVING MIN(indicator_cont_dup) = 10
-    );
-    DELETE FROM mockup_selected_grids
-    WHERE proj_id IN (
-        SELECT proj_id 
-        FROM selected_projects
-        GROUP BY proj_id
-        HAVING MIN(indicator_cont_dup) = 10
-    );
+    IF 'MOCKUP' = ANY(grid_types) THEN
+        DELETE FROM mockup_grids
+        WHERE project_id IN (
+            SELECT proj_id 
+            FROM selected_projects
+            GROUP BY proj_id
+            HAVING MIN(indicator_cont_dup) = 10
+        );
+        DELETE FROM mockup_selected_grids
+        WHERE proj_id IN (
+            SELECT proj_id 
+            FROM selected_projects
+            GROUP BY proj_id
+            HAVING MIN(indicator_cont_dup) = 10
+        );
+    END IF;
 
     -- Delete the temporary table
     DROP TABLE temp_project_ids;

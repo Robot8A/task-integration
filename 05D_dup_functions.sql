@@ -87,7 +87,6 @@ DECLARE
 	nodes_per_area_border_buffer DOUBLE PRECISION;
 	total_number_of_duplicated_buildings BIGINT;
 	total_area_of_grids DOUBLE PRECISION;
-	utm_epsg INTEGER;
 	num_distances INT;
 BEGIN
 
@@ -98,9 +97,6 @@ BEGIN
 	ELSE
 		do_mockup_grid := FALSE;
 	END IF;
-
-	-- Determine the SRID of the original grids in UTM
-	SELECT get_utm_zone(project_id) INTO utm_epsg;
 
 	-- Save total number of duplicated buildings
 	WITH grids AS (

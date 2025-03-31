@@ -86,6 +86,11 @@ BEGIN
 	LIMIT 10;
 	CALL raise_notice('Projects selected');
 
+    IF (SELECT COUNT(*) FROM temp_project_ids) = 0 THEN
+        CALL raise_notice('All projects have been processed');
+        RETURN;
+    END IF;
+
     -- Populate mockup grids
     CALL raise_notice('Populating mockup grids');
 
