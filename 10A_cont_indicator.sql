@@ -2,7 +2,7 @@
 DO $$ 
 DECLARE
     --distances DOUBLE PRECISION[] := ARRAY[5.0::DOUBLE PRECISION, 10.0::DOUBLE PRECISION, 15.0::DOUBLE PRECISION];
-    distances DOUBLE PRECISION[] := ARRAY(SELECT i::DOUBLE PRECISION FROM generate_series(1, 100) AS i);
+    distances DOUBLE PRECISION[] := ARRAY(SELECT i::DOUBLE PRECISION FROM generate_series(0, 100, 5) AS i);
     --grid_types TEXT[] := ARRAY['MOCKUP'::TEXT, 'ORIGINAL'::TEXT];
     grid_types TEXT[] := ARRAY['ORIGINAL'::TEXT];
     total_projects INT;
