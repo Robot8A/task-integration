@@ -2,14 +2,16 @@
 
 
 ## Description
-...
+Prerequisites:
+* Python 3 (tested with 3.11.2)
+    * Install libraries via requirements.txt
+* PostgreSQL (tested with 15.2)
+    * PostGIS (tested with 3.3.2)
+
+
+Run the files in numerical order, Shell and Python scripts on the terminal, SQL files inside the database.
+
+Files with equal numbers but different letters can be run in parallel.
 
 ## License
 [GPL-3.0 license](LICENSE)
-
-## Acknowledgements
-<img align="left" src="eu_flag.svg" alt="EU Flag" width="150px">
-This project has received funding from the European Union’s Horizon 2020 research and innovation programme under the Marie Skłodowska-Curie grant agreement No 955569.
-The opinions expressed in this document reflect only the author’s view and in no way reflect the European Commission’s opinions. The European Commission is not responsible for any use that may be made of the information it contains.
-
-<a href="https://odeco-research.eu/"><img src="ODECO.svg" alt="ODECO Logo" width="100%"></a>
