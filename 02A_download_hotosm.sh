@@ -1,4 +1,7 @@
 #!/bin/bash
+# This script downloads project data from the HOTOSM Tasking Manager API.
+# It retrieves project details, statistics, AOI, OSM buildings, OSM roads, and task grid data
+# for all projects listed in "project_ids.txt".
 
 API_ENDPOINT="https://tasking-manager-tm4-production-api.hotosm.org/api/v2/"
 

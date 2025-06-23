@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """
-Date: 2024-07-11
+Downloads all projects from the HOTOSM Tasking Manager API with the desired characteristics
+and saves the project IDs to a file named "project_ids.txt".
 """
 
 import requests
