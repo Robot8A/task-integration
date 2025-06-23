@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# This script executes steps 8 to 10 of the HOTOSM data processing pipeline in a loop until all projects are processed.
+
 # PostgreSQL parameters
 host=localhost
 port=5432
