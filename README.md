@@ -1,6 +1,101 @@
 # task-integration
 
 
+# Reproducibility Package  
+**Article Title:**  
+*Identifying Potential Quality Issues Derived From Collective Intelligence in Humanitarian Mapping: Microtask Aggregation in the HOT Tasking Manager*
+
+---
+
+This repository contains the code and data associated with the article. It includes:
+
+- Scripts for data collection and processing  
+- Jupyter Notebooks used for analysis  
+- The primary dataset (incident counts and computed quality indicators at the project level)  
+- Supplementary materials (e.g., project heatmaps used in the manual review of Geary’s C values)
+
+---
+
+## Reproducibility of Figures and Tables
+
+### Section 5.2 – Edge-based Issues
+
+This section includes **Figures 6 and 7**, and **Table 1**. Each item is divided into two parts:
+- **Left side**: Results for **large building intersections**
+- **Right side**: Results for **road terminations**
+
+**Relevant notebooks:**
+- `Data Analysis/Large_building_intersections.ipynb`  
+- `Data Analysis/Road_terminations.ipynb`
+
+#### Figure 6  
+Displays the proportion of nodes per project located in selected edge areas (5%, 10%, 15%) compared to random areas.
+
+Each subfigure includes:
+- A top table with descriptive statistics  
+- Bottom boxplots  
+- Statistical test results
+
+**Implementation details:**  
+See section `1. Characterization of areas: edge and random (5%, 10%, 15%)` in the corresponding notebook.
+
+#### Figure 7  
+Explores how the average percentage of event occurrences changes across concentric ring areas along the task boundary (in 5% increments up to full coverage).
+
+- **Top plots**:  
+  - Line: difference between observed and expected occurrences  
+  - Bars: incremental change in that difference  
+- **Bottom plots**:  
+  - Heatmaps preserving square task geometry
+
+**Implementation details:**  
+See section `2. Profiling the difference between the observed and expected proportion of nodes (‘Difference’) and its rate of change (‘Change’) as a function of edge area at 5% increments`.
+
+#### Table 1  
+Presents results of a regression analysis examining how project characteristics affect the difference between observed and expected event concentrations at task boundaries. Includes:
+
+- Independent variables  
+- Regression coefficients  
+- Standard errors  
+- t-statistics  
+- p-values
+
+**Implementation details:**  
+See section `3. Regression analysis of the edge effect (diff)`.
+
+---
+
+### Section 5.3 – Task-wide Issues
+
+This section includes **Figures 8 and 9**, and **Table 2**.
+
+**Relevant notebook:**
+- `Data Analysis/GearyAnalysis.ipynb`
+
+#### Figure 8  
+Combines a boxplot and violin plot to show the distribution of valid Geary’s C values across projects.
+
+**Implementation details:**  
+See section `2. Describe Geary’s C`.
+
+#### Figure 9  
+Presents profiles of different project categories based on their Geary’s C values. Displays average z-scores (standardized values) for:
+
+- Number of tasks (`Tasks`)  
+- Total number of contributors (`Contributors`)  
+- Building density (`Buildings/Area`)  
+- Average area per task (`Area/Tasks`)
+
+**Implementation details:**  
+See section `3. Profiling projects per Geary’s C category`.
+
+---
+
+
+
+
+
+
 ## Description
 Prerequisites:
 * Python 3 (tested with 3.11.2)
