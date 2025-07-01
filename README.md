@@ -55,7 +55,7 @@ Explores how the average percentage of event occurrences changes across concentr
 See section `2. Profiling the difference between the observed and expected proportion of nodes (‘Difference’) and its rate of change (‘Change’) as a function of edge area at 5% increments`.
 
 #### Table 1. Regression analysis of the edge effect (Significant regressors at p < 0.05 are highlighted) 
-![egression analysis of the edge effect (Significant regressors at p < 0.05 are highlighted)](https://github.com/Robot8A/task-integration/raw/main/images/regressionedgeeffect.jpg)
+![Regression analysis of the edge effect (Significant regressors at p < 0.05 are highlighted)](https://github.com/Robot8A/task-integration/raw/main/images/regressionedgeeffect.jpg)
 
 Presents results of a regression analysis examining how project characteristics affect the difference between observed and expected event concentrations at task boundaries. Includes:
 
@@ -77,13 +77,17 @@ This section includes **Figures 8 and 9**, and **Table 2**.
 **Relevant notebook:**
 - [View `GearyAnalysis.ipynb`](https://github.com/Robot8A/task-integration/blob/main/Data%20Analysis/GearyAnalysis.ipynb)
 
-#### Figure 8  
+#### Figure 8. Geary’s C distribution (n=2,972).  
+![Geary’s C distribution (n=2,972)](https://github.com/Robot8A/task-integration/raw/main/images/GearyDistribution.png)
+
 Combines a boxplot and violin plot to show the distribution of valid Geary’s C values across projects.
 
 **Implementation details:**  
 See section `2. Describe Geary’s C`.
 
-#### Figure 9  
+#### Figure 9. Geary’s C Profiling (n=4,274). 
+![Geary’s C Profiling (n=4,274)](https://github.com/Robot8A/task-integration/raw/main/images/GearyProfiling.jpg)
+
 Presents profiles of different project categories based on their Geary’s C values. Displays average z-scores (standardized values) for:
 
 - Number of tasks (`Tasks`)  
