@@ -23,8 +23,8 @@ This section includes **Figures 6 and 7**, and **Table 1**. Each item is divided
 - **Right side**: Results for **road terminations**
 
 **Relevant folders:**
-- [Data Analysis/Large_building_intersections](./Data%20Analysis/Large_building_intersections/)  
-- [Data Analysis/Road_terminations](./Data%20Analysis/Road_terminations/)
+- [Data Analysis/Large_building_intersections](.task-integration/Data%20Analysis/Large_building_intersections.ipynb)  
+- [Data Analysis/Road_terminations](.task-integration//Data%20Analysis/Road_terminations.ipynb)
 
 #### Figure 6  
 Displays the proportion of nodes per project located in selected edge areas (5%, 10%, 15%) compared to random areas.
