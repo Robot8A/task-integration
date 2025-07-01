@@ -23,8 +23,8 @@ This section includes **Figures 6 and 7**, and **Table 1**. Each item is divided
 - **Right side**: Results for **road terminations**
 
 **Relevant notebooks:**
-- [View `Large_building_intersections.ipynb`](https://nbviewer.org/github/Robot8A/task-integration/blob/main/Data-Analysis/Large_building_intersections.ipynb)  
-- [View `Road_terminations.ipynb`](https://nbviewer.org/github/Robot8A/task-integration/blob/main/Data-Analysis/Road_terminations.ipynb)
+* [View `Large_building_intersections.ipynb`](https://nbviewer.org/github/Robot8A/task-integration/blob/main/Data-Analysis/Large_building_intersections.ipynb)  
+* [View `Road_terminations.ipynb`](https://nbviewer.org/github/Robot8A/task-integration/blob/main/Data-Analysis/Road_terminations.ipynb)
 
 
 #### Figure 6  
