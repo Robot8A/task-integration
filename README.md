@@ -28,7 +28,7 @@ This section includes **Figures 6 and 7**, and **Table 1**. Each item is divided
 
 
 #### Figure 6  
-![Comparison of the proportion of nodes per project (%) in selected edge areas (5%, 10%, 15%) vs. equivalent random areas. Significant differences with respect to expected values at p < 0.05*, p < 0.01**, and p < 0.001***.](https://github.com/Robot8A/task-integration/raw/main/images/edgeeffect.pdf)
+![Comparison of the proportion of nodes per project (%) in selected edge areas (5%, 10%, 15%) vs. equivalent random areas. Significant differences with respect to expected values at p < 0.05*, p < 0.01**, and p < 0.001***.](https://github.com/Robot8A/task-integration/raw/main/images/edgeeffect.jpg)
 
 Displays the proportion of nodes per project located in selected edge areas (5%, 10%, 15%) compared to random areas.
 
