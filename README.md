@@ -69,7 +69,7 @@ See section `3. Regression analysis of the edge effect (diff)`.
 This section includes **Figures 8 and 9**, and **Table 2**.
 
 **Relevant notebook:**
-- [View `GearyAnalysis.ipynb`](https://nbviewer.org/github/**YOUR-USERNAME**/**YOUR-REPO**/blob/main/Data%20Analysis/GearyAnalysis.ipynb)
+- [View `GearyAnalysis.ipynb`]([https://nbviewer.org/github/**YOUR-USERNAME**/**YOUR-REPO**/blob/main/Data%20Analysis/GearyAnalysis.ipynb](https://github.com/Robot8A/task-integration/blob/main/Data%20Analysis/GearyAnalysis.ipynb))
 
 #### Figure 8  
 Combines a boxplot and violin plot to show the distribution of valid Geary’s C values across projects.
