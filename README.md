@@ -54,7 +54,7 @@ Explores how the average percentage of event occurrences changes across concentr
 **Implementation details:**  
 See section `2. Profiling the difference between the observed and expected proportion of nodes (‘Difference’) and its rate of change (‘Change’) as a function of edge area at 5% increments`.
 
-#### Table 1 
+#### Table 1. Regression analysis of the edge effect (Significant regressors at p < 0.05 are highlighted) 
 ![egression analysis of the edge effect (Significant regressors at p < 0.05 are highlighted)](https://github.com/Robot8A/task-integration/raw/main/images/regressionedgeeffect.jpg)
 
 Presents results of a regression analysis examining how project characteristics affect the difference between observed and expected event concentrations at task boundaries. Includes:
