@@ -22,9 +22,11 @@ This section includes **Figures 6 and 7**, and **Table 1**. Each item is divided
 - **Left side**: Results for **large building intersections**
 - **Right side**: Results for **road terminations**
 
-**Relevant folders:**
-- [Data Analysis/Large_building_intersections](.task-integration/Data%20Analysis/Large_building_intersections.ipynb)  
-- [Data Analysis/Road_terminations](.task-integration//Data%20Analysis/Road_terminations.ipynb)
+**Relevant notebooks:**
+- [View `Large_building_intersections.ipynb`](https://nbviewer.org/github/Robot8A/task-integration/blob/main/Data%20Analysis/Large_building_intersections.ipynb)  
+- [View `Road_terminations.ipynb`](https://nbviewer.org/github/Robot8A/task-integration/blob/main/Data%20Analysis/Road_terminations.ipynb)
+
+> ⚠️ Replace `**YOUR-USERNAME**` and `**YOUR-REPO**` with your actual GitHub username and repository name.
 
 #### Figure 6  
 Displays the proportion of nodes per project located in selected edge areas (5%, 10%, 15%) compared to random areas.
@@ -35,7 +37,7 @@ Each subfigure includes:
 - Statistical test results
 
 **Implementation details:**  
-See section `1. Characterization of areas: edge and random (5%, 10%, 15%)` in the corresponding folder.
+See section `1. Characterization of areas: edge and random (5%, 10%, 15%)` in the corresponding notebook.
 
 #### Figure 7  
 Explores how the average percentage of event occurrences changes across concentric ring areas along the task boundary (in 5% increments up to full coverage).
@@ -67,8 +69,8 @@ See section `3. Regression analysis of the edge effect (diff)`.
 
 This section includes **Figures 8 and 9**, and **Table 2**.
 
-**Relevant folder:**
-- [Data Analysis/GearyAnalysis](./Data%20Analysis/GearyAnalysis/)
+**Relevant notebook:**
+- [View `GearyAnalysis.ipynb`](https://nbviewer.org/github/**YOUR-USERNAME**/**YOUR-REPO**/blob/main/Data%20Analysis/GearyAnalysis.ipynb)
 
 #### Figure 8  
 Combines a boxplot and violin plot to show the distribution of valid Geary’s C values across projects.
@@ -88,7 +90,6 @@ Presents profiles of different project categories based on their Geary’s C val
 See section `3. Profiling projects per Geary’s C category`.
 
 ---
-
 
 
 
