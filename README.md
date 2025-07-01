@@ -40,7 +40,9 @@ Each subfigure includes:
 **Implementation details:**  
 See section `1. Characterization of areas: edge and random (5%, 10%, 15%)` in the corresponding notebook.
 
-#### Figure 7  
+#### Figure 7. Mean difference between the observed and expected proportion of nodes (’Difference’) and its rate of change (’Change’) as a function of edge area.  
+![Mean difference between the observed and expected proportion of nodes (’Difference’) and its rate of change (’Change’) as a function of edge area.](https://github.com/Robot8A/task-integration/raw/main/images/borderprofile.jpg)
+
 Explores how the average percentage of event occurrences changes across concentric ring areas along the task boundary (in 5% increments up to full coverage).
 
 - **Top plots**:  
