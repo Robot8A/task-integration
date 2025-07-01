@@ -68,6 +68,10 @@ Presents results of a regression analysis examining how project characteristics 
 **Implementation details:**  
 See section `3. Regression analysis of the edge effect (diff)`.
 
+#### Table 2. Counting and characterizing the sample of projects exhibiting negative spatial autocorrelation (C > 1) according to whether different mapping styles are identified through inspection (n=78)
+![Counting and characterizing the sample of projects exhibiting negative spatial autocorrelation (C > 1) according to whether different mapping styles are identified through inspection (n=78)](https://github.com/Robot8A/task-integration/raw/main/images/GearyTable.jpg)
+
+
 ---
 
 ### Section 5.3 – Task-wide Issues
