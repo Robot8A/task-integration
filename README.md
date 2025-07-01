@@ -1,7 +1,5 @@
 # task-integration
 
-
-# Reproducibility Package  
 **Article Title:**  
 *Identifying Potential Quality Issues Derived From Collective Intelligence in Humanitarian Mapping: Microtask Aggregation in the HOT Tasking Manager*
 
