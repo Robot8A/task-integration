@@ -98,8 +98,19 @@ Presents profiles of different project categories based on their Geary’s C val
 **Implementation details:**  
 See section `3. Profiling projects per Geary’s C category`.
 
+
+### Manual Inspection of Project Heatmaps
 #### Table 2. Counting and characterizing the sample of projects exhibiting negative spatial autocorrelation (C > 1) according to whether different mapping styles are identified through inspection (n=78)
 ![Counting and characterizing the sample of projects exhibiting negative spatial autocorrelation (C > 1) according to whether different mapping styles are identified through inspection (n=78)](https://github.com/Robot8A/task-integration/raw/main/images/GearyTable.jpg)
+
+The final table in Section 5.3 is based on the manual inspection of a sample of project heatmaps.
+
+The list of these projects and their characteristics can be found in the spreadsheet [View `sampleGeary.xlsx`](https://github.com/Robot8A/task-integration/blob/main/Data%20Analysis/sampleGeary.xlsx). In this spreadsheet:
+
+- The **"atlas"** column shows the project heatmap identifier, which can be found in the [View `Project heatmaps`](https://github.com/Robot8A/task-integration/blob/main/atlas/) folder.
+- The **"Different style"** column identifies the category resulting from the manual inspection.
+
+A second tab of the spreadsheet contains the medians of variables relevant to the identified project categories.
 
 ---
 
