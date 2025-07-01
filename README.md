@@ -26,7 +26,6 @@ This section includes **Figures 6 and 7**, and **Table 1**. Each item is divided
 - [View `Large_building_intersections.ipynb`](https://nbviewer.org/github/Robot8A/task-integration/blob/main/Data%20Analysis/Large_building_intersections.ipynb)  
 - [View `Road_terminations.ipynb`](https://nbviewer.org/github/Robot8A/task-integration/blob/main/Data%20Analysis/Road_terminations.ipynb)
 
-> ⚠️ Replace `**YOUR-USERNAME**` and `**YOUR-REPO**` with your actual GitHub username and repository name.
 
 #### Figure 6  
 Displays the proportion of nodes per project located in selected edge areas (5%, 10%, 15%) compared to random areas.
