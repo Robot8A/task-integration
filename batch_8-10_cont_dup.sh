@@ -2,12 +2,18 @@
 
 # This script executes steps 8 to 10 of the HOTOSM data processing pipeline in a loop until all projects are processed.
 
-# PostgreSQL parameters
-host=localhost
-port=5432
-database=hotosm
-user=postgres
-export PGPASSWORD=postgres
+# Ensure the config.py file exists
+if [ ! -f "config.py" ]; then
+    echo "config.py file not found. Please ensure it exists in the current directory."
+    exit 1
+fi
+
+# Extract PostgreSQL parameters from config.py
+host=$(grep -oP "database_host\s*=\s*['\"]\K[^'\"]+" config.py)
+port=$(grep -oP "database_port\s*=\s*['\"]\K[^'\"]+" config.py)
+database=$(grep -oP "database_name\s*=\s*['\"]\K[^'\"]+" config.py)
+user=$(grep -oP "database_user\s*=\s*['\"]\K[^'\"]+" config.py)
+export PGPASSWORD=$(grep -oP "database_password\s*=\s*['\"]\K[^'\"]+" config.py)
 
 loop_count=0
 cont_finished=false
