@@ -19,7 +19,6 @@ loop_count=0
 cont_finished=false
 dup_finished=false
 
-# Do an infinite loop
 while true; do
 
     echo "********************************"
