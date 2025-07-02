@@ -19,8 +19,6 @@ BEGIN
     AND typename = 'BUILDINGS'
 	ORDER BY proj_id
 	;
-    --LIMIT (SELECT COUNT(*) * 0.0025 FROM selected_projects);
-	--LIMIT 1;
 	CALL raise_notice('Projects selected');
 
     -- Calculate the average number of vertices of the buildings in each task

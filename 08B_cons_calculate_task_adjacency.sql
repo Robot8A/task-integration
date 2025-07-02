@@ -13,10 +13,7 @@ BEGIN
 	SELECT proj_id, typename
 	FROM selected_projects
 	WHERE indicator_cons = 7 AND typename = 'BUILDINGS'
-	ORDER BY proj_id
-	;
-    --LIMIT (SELECT COUNT(*) * 0.05 FROM selected_projects);
-	--LIMIT 100;
+	ORDER BY proj_id;
 	CALL raise_notice('Projects selected');
 
     -- Exit if temp_project_ids is empty

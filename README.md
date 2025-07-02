@@ -126,7 +126,7 @@ Prerequisites:
 
 
 Run the files in numerical order according to their filename. Shell and Python scripts should be run on the terminal, SQL files inside the database.
-Files 8 to 10 are run with the batch script instead.
+Files 08\*_cont_dup\* to 10\*_cont_dup\* are better run with the batch script instead, as the files have to be run repeatedly in batches to avoid hitting disk limits.
 
 Files with equal numbers but different letters can be run in parallel.
 The file config.py contains the database address, user and password. Change according to your setup.

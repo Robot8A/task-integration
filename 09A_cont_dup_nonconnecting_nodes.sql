@@ -29,7 +29,7 @@ BEGIN
 	ORDER BY proj_id
 	--;
     --LIMIT (SELECT COUNT(*) * 0.0025 FROM selected_projects);
-	LIMIT 1;
+	LIMIT 1; -- Adjust the batch limit as needed
 	CALL raise_notice('Projects selected');
 
     -- Iterate over each project_id

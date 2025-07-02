@@ -83,7 +83,7 @@ BEGIN
 	WHERE indicator_cont_dup = 7
 	ORDER BY proj_id
 	--LIMIT (SELECT COUNT(*) * 0.0025 FROM selected_projects);
-	LIMIT 10;  -- Adjust the limit as needed
+	LIMIT 10;  -- Adjust the batch limit as needed
 	CALL raise_notice('Projects selected');
 
     IF (SELECT COUNT(*) FROM temp_project_ids) = 0 THEN
