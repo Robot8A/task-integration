@@ -8,14 +8,9 @@ import json
 from tqdm import tqdm
 import psycopg2
 import dateutil.parser
+from config import database_host, database_port, database_name, database_user, database_password
 
 proj_ids_filename = "project_ids.txt"
-
-database_host = "localhost"
-database_port = "5432"
-database_name = "hotosm"
-database_user = "postgres"
-database_password = "postgres"
 
 if __name__ == "__main__":
     # Connect to the database

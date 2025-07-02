@@ -6,6 +6,7 @@ import pandas as pd
 import geopandas as gpd
 from sqlalchemy import create_engine, text
 import requests
+from config import database_host as host, database_port as port, database_name as database, database_user as user, database_password as password
 
 # Set working directory as the same one where the file is located
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -29,11 +30,6 @@ for s2_cell in s2_cells:
     data_dict[s2_cell] = data_df[data_df['cell_ids'].str.contains(s2_cell)]['project_id'].values
 
 # PostgreSQL parameters
-host = "localhost"
-port = 5432
-database = "hotosm"
-user = "postgres"
-password = "postgres"
 engine = create_engine(f'postgresql://{user}:{password}@{host}:{port}/{database}')
 table_name = "google_buildings"
 table_name_log = "s2_cell_google_building_uploaded"

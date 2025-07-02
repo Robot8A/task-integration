@@ -1,0 +1,5 @@
+database_host = "localhost"
+database_port = "5432"
+database_name = "hotosm"
+database_user = "postgres"
+database_password = "postgres"

@@ -128,6 +128,7 @@ Prerequisites:
 Run the files in numerical order according to their filename. Shell and Python scripts should be run on the terminal, SQL files inside the database.
 
 Files with equal numbers but different letters can be run in parallel.
+The file config.py contains the database address, user and password. Change according to your setup.
 
 ## License
 [GPL-3.0 license](LICENSE)

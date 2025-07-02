@@ -5,17 +5,13 @@ import os
 import shapely
 from sqlalchemy import create_engine, text
 from tqdm import tqdm
+from config import database_host as host, database_port as port, database_name as database, database_user as user, database_password as password
 
 # Set working directory as the same one where the file is located
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 data_dir = 'data'
 
 # PostgreSQL parameters
-host = "localhost"
-port = 5432
-database = "hotosm"
-user = "postgres"
-password = "postgres"
 engine = create_engine(f'postgresql://{user}:{password}@{host}:{port}/{database}')
 
 # Define the S2 cell level
