@@ -1,10 +1,8 @@
 -- CALCULATE THE DUPLICATION INDICATOR
 DO $$ 
 DECLARE
-    --distances DOUBLE PRECISION[] := ARRAY[5.0::DOUBLE PRECISION, 10.0::DOUBLE PRECISION, 15.0::DOUBLE PRECISION];
-    distances DOUBLE PRECISION[] := ARRAY(SELECT i::DOUBLE PRECISION FROM generate_series(1, 100) AS i);
-    --grid_types TEXT[] := ARRAY['MOCKUP'::TEXT, 'ORIGINAL'::TEXT];
-    grid_types TEXT[] := ARRAY['ORIGINAL'::TEXT];
+    distances DOUBLE PRECISION[];
+    grid_types TEXT[] := ARRAY['MOCKUP'::TEXT, 'ORIGINAL'::TEXT];
     total_projects INT;
     processed_projects INT := 0;
     proj_ids INT[]; -- Array to store project IDs
@@ -43,8 +41,6 @@ BEGIN
     AND typename = 'BUILDINGS'
     ORDER BY proj_id
     ;
-    --LIMIT (SELECT COUNT(*) * 0.0025 FROM selected_projects);
-    --LIMIT 1;
     CALL raise_notice('Projects selected');
 
     -- Get the total number of projects
@@ -53,22 +49,32 @@ BEGIN
     -- Loop through the projects, and calculate duplication indicators
     FOREACH current_project_id IN ARRAY (SELECT array_agg(proj_id) FROM temp_project_ids)
     LOOP
-        INSERT INTO duplication (project_id, grid_type, shrink_distance, shrink_type, nodes_in_shrunk_grids, nodes_in_border_buffer, area_of_shrunk_grids, area_of_border_buffer, nodes_per_area_shrunk_grids, nodes_per_area_border_buffer)
-            SELECT current_project_id as project_id, grid_type, shrink_distance, shrink_type, nodes_in_shrunk_grids, nodes_in_border_buffer, area_of_shrunk_grids, area_of_border_buffer, nodes_per_area_shrunk_grids, nodes_per_area_border_buffer
-            FROM duplication(
-                ARRAY[current_project_id],
-                distances,
-                grid_types,
-                ARRAY['percentage']
-            )
-            ON CONFLICT (project_id, grid_type, shrink_distance, shrink_type) 
-            DO UPDATE SET 
-                nodes_in_shrunk_grids = EXCLUDED.nodes_in_shrunk_grids,
-                nodes_in_border_buffer = EXCLUDED.nodes_in_border_buffer,
-                area_of_shrunk_grids = EXCLUDED.area_of_shrunk_grids,
-                area_of_border_buffer = EXCLUDED.area_of_border_buffer,
-                nodes_per_area_shrunk_grids = EXCLUDED.nodes_per_area_shrunk_grids,
-                nodes_per_area_border_buffer = EXCLUDED.nodes_per_area_border_buffer;
+        FOREACH grid_type in ARRAY grid_types
+        LOOP
+            IF grid_type = 'MOCKUP' THEN
+                distances = ARRAY[5.0::DOUBLE PRECISION, 10.0::DOUBLE PRECISION, 15.0::DOUBLE PRECISION];
+            ELSIF grid_type = 'ORIGINAL' THEN
+                distances = ARRAY(SELECT i::DOUBLE PRECISION FROM generate_series(0, 100, 5) AS i);
+            ELSE 
+                RAISE EXCEPTION 'Unknown grid type: %', grid_type;
+            END IF;
+            INSERT INTO duplication (project_id, grid_type, shrink_distance, shrink_type, nodes_in_shrunk_grids, nodes_in_border_buffer, area_of_shrunk_grids, area_of_border_buffer, nodes_per_area_shrunk_grids, nodes_per_area_border_buffer)
+                SELECT current_project_id as project_id, grid_type, shrink_distance, shrink_type, nodes_in_shrunk_grids, nodes_in_border_buffer, area_of_shrunk_grids, area_of_border_buffer, nodes_per_area_shrunk_grids, nodes_per_area_border_buffer
+                FROM duplication(
+                    ARRAY[current_project_id],
+                    distances,
+                    ARRAY[grid_type],
+                    ARRAY['percentage']
+                )
+                ON CONFLICT (project_id, grid_type, shrink_distance, shrink_type) 
+                DO UPDATE SET 
+                    nodes_in_shrunk_grids = EXCLUDED.nodes_in_shrunk_grids,
+                    nodes_in_border_buffer = EXCLUDED.nodes_in_border_buffer,
+                    area_of_shrunk_grids = EXCLUDED.area_of_shrunk_grids,
+                    area_of_border_buffer = EXCLUDED.area_of_border_buffer,
+                    nodes_per_area_shrunk_grids = EXCLUDED.nodes_per_area_shrunk_grids,
+                    nodes_per_area_border_buffer = EXCLUDED.nodes_per_area_border_buffer;
+        END LOOP;
 
         processed_projects := processed_projects + 1;
 
