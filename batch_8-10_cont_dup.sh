@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # This script executes steps 8 to 10 of the HOTOSM data processing pipeline in a loop until all projects are processed.
+# It is run in batches to ensure we do not run out of disk space.
 
 # Ensure the config.py file exists
 if [ ! -f "config.py" ]; then

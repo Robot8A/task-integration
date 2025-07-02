@@ -74,7 +74,7 @@ BEGIN
     SET max_parallel_workers = 10;
     SET max_parallel_workers_per_gather = 10;
 
-    -- Get 10% of the selected projects
+    -- Select the projects
 	CALL raise_notice('Selecting projects');
 	DROP TABLE IF EXISTS temp_project_ids;
 	CREATE TEMP TABLE temp_project_ids AS
@@ -83,7 +83,7 @@ BEGIN
 	WHERE indicator_cont_dup = 7
 	ORDER BY proj_id
 	--LIMIT (SELECT COUNT(*) * 0.0025 FROM selected_projects);
-	LIMIT 10;
+	LIMIT 10;  -- Adjust the limit as needed
 	CALL raise_notice('Projects selected');
 
     IF (SELECT COUNT(*) FROM temp_project_ids) = 0 THEN

@@ -4,7 +4,7 @@ BEGIN
     RAISE NOTICE '-- 08B_cons_calculate_task_adjacency.sql --';
     RAISE NOTICE '-------------------------------------------';
 
-    -- Get 10% of the selected projects
+    -- Select the projects
 	CALL raise_notice('Selecting projects');
     IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'temp_project_ids') THEN
         DROP TABLE temp_project_ids;
