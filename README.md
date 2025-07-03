@@ -28,6 +28,7 @@ Files with equal numbers but different letters can be run in parallel.
 The file config.py contains the database address, user and password. Change according to your setup.
 
 Please note that the execution time of the scripts depends on the available computing power and may take several days when run on a typical local machine. These executions generate the data files required for the analysis described in the following sections.
+The generated datasets appear in the folder [View `Data`](https://github.com/Robot8A/task-integration/blob/main/Data%20Analysis/Data)
 
 ## Reproducibility of Figures and Tables
 
