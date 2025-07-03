@@ -13,6 +13,21 @@ This repository contains the code and data associated with the article. It inclu
 - Supplementary materials (e.g., project heatmaps used in the manual review of Geary’s C values)
 
 ---
+## Prerequisites:
+* Python 3 (tested with 3.11.2)
+    * Install libraries via requirements.txt
+* PostgreSQL (tested with 15.2)
+    * PostGIS (tested with 3.3.2)
+
+## Data collection and preprocessing
+
+Run the files in numerical order according to their filename. Shell and Python scripts should be run on the terminal, SQL files inside the database.
+Files 08\*_cont_dup\* to 10\*_cont_dup\* are better run with the batch script instead, as the files have to be run repeatedly in batches to avoid hitting disk limits.
+
+Files with equal numbers but different letters can be run in parallel.
+The file config.py contains the database address, user and password. Change according to your setup.
+
+Please note that the execution time of the scripts depends on the available computing power and may take several days when run on a typical local machine. These executions generate the data files required for the analysis described in the following sections.
 
 ## Reproducibility of Figures and Tables
 
@@ -113,23 +128,6 @@ The list of these projects and their characteristics can be found in the spreads
 A second tab of the spreadsheet contains the medians of variables relevant to the identified project categories.
 
 ---
-
-
-
-
-## Description
-Prerequisites:
-* Python 3 (tested with 3.11.2)
-    * Install libraries via requirements.txt
-* PostgreSQL (tested with 15.2)
-    * PostGIS (tested with 3.3.2)
-
-
-Run the files in numerical order according to their filename. Shell and Python scripts should be run on the terminal, SQL files inside the database.
-Files 08\*_cont_dup\* to 10\*_cont_dup\* are better run with the batch script instead, as the files have to be run repeatedly in batches to avoid hitting disk limits.
-
-Files with equal numbers but different letters can be run in parallel.
-The file config.py contains the database address, user and password. Change according to your setup.
 
 ## License
 [GPL-3.0 license](LICENSE)
