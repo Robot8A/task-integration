@@ -1,7 +1,7 @@
 # task-integration
 
 **Article Title:**  
-*Identifying Potential Quality Issues Derived From Collective Intelligence in Humanitarian Mapping: Microtask Aggregation in the HOT Tasking Manager*
+*Quality Issues in Crowdsourced Mapping: Microtask Aggregation in the Humanitarian OpenStreetMap Team Tasking Manager*
 
 ---
 
@@ -132,3 +132,11 @@ A second tab of the spreadsheet contains the medians of variables relevant to th
 
 ## License
 [GPL-3.0 license](LICENSE)
+
+
+## Acknowledgements
+<img align="left" src="images/eu_flag.svg" alt="EU Flag" width="150px">
+This project has received funding from the European Union’s Horizon 2020 research and innovation programme under the Marie Skłodowska-Curie grant agreement No 955569.
+The opinions expressed in this document reflect only the authors’ view and in no way reflect the European Commission’s opinions. The European Commission is not responsible for any use that may be made of the information it contains.
+
+<a href="https://odeco-research.eu/"><img src="ODECO.svg" alt="ODECO Logo" width="100%"></a>
