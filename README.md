@@ -139,4 +139,4 @@ A second tab of the spreadsheet contains the medians of variables relevant to th
 This project has received funding from the European Union’s Horizon 2020 research and innovation programme under the Marie Skłodowska-Curie grant agreement No 955569.
 The opinions expressed in this document reflect only the authors’ view and in no way reflect the European Commission’s opinions. The European Commission is not responsible for any use that may be made of the information it contains.
 
-<a href="https://odeco-research.eu/"><img src="ODECO.svg" alt="ODECO Logo" width="100%"></a>
+<a href="https://odeco-research.eu/"><img src="images/ODECO.svg" alt="ODECO Logo" width="100%"></a>
